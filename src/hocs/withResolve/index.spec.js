@@ -79,7 +79,7 @@ describe('withResolve', () => {
     const spy = createSpyComponent();
     const comp = withResolve({
       subscribe: {
-        user: ({ userId }) => api.user.getUser.createSubscriber().withArgs(userId)
+        user: ({ userId }) => api.user.getUser.createSubscriber(userId)
       }
     })(spy);
 
