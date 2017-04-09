@@ -73,4 +73,28 @@ describe('withResolve', () => {
       expect(props.userId).to.equal('peter');
     });
   });
+
+  it('allows to subscribe to changes', () => {
+    const api = build(createConfig(), [plugins.subscriber()]);
+    const spy = createSpyComponent();
+    const comp = withResolve({
+      subscribe: {
+        user: ({ userId }) => api.user.getUser.createSubscriber().withArgs(userId)
+      }
+    })(spy);
+
+    render(comp, { userId: 'peter' });
+
+    return delay().then(() => {
+      expect(spy).to.have.been.calledOnce;
+      const firstProps = spy.args[0][0];
+      expect(firstProps.user).to.deep.equal({ id: 'peter', name: 'peter' });
+
+      return api.user.updateUser({ id: 'peter', name: 'crona' }).then((nextUser) => {
+        expect(spy).to.have.been.calledTwice;
+        const secondProps = spy.args[1][0];
+        expect(secondProps.user).to.deep.equal(nextUser);
+      });
+    });
+  });
 });
