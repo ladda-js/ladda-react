@@ -31,7 +31,7 @@ class Container extends Component {
 
   trigger(props) {
     this.setState({ pending: true, error: null });
-    const { resolve, originalProps } = props;
+    const { resolve = {}, originalProps } = props;
     const asList = Object.keys(resolve).map((key) => [key, resolve[key]]);
     const promises = Promise.all(asList.map(el => el[1](originalProps)));
     promises.then(
