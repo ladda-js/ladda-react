@@ -74,12 +74,12 @@ describe('withResolve', () => {
     });
   });
 
-  it('allows to subscribe to changes', () => {
-    const api = build(createConfig(), [plugins.subscriber()]);
+  it('allows to observe changes', () => {
+    const api = build(createConfig(), [plugins.observable()]);
     const spy = createSpyComponent();
     const comp = withResolve({
-      subscribe: {
-        user: ({ userId }) => api.user.getUser.createSubscriber(userId)
+      observe: {
+        user: ({ userId }) => api.user.getUser.createObservable(userId)
       }
     })(spy);
 

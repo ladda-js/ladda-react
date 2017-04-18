@@ -7,7 +7,7 @@ class Container extends Component {
     this.resolvedData = {};
     this.resolvedDataTargetSize = 0;
 
-    this.subscribers = [];
+    this.observables = [];
 
     this.state = {
       pending: false,
@@ -16,9 +16,9 @@ class Container extends Component {
     };
   }
 
-  unsubscribe() {
-    while (this.subscribers.length) {
-      this.subscribers.pop().destroy();
+  destroyObservers() {
+    while (this.observables.length) {
+      this.observables.pop().destroy();
     }
   }
 
@@ -27,12 +27,12 @@ class Container extends Component {
   }
 
   componentWillReceiveProps(newProps) {
-    this.unsubscribe();
+    this.destroyObservers();
     this.trigger(newProps);
   }
 
   componentWillUnmount() {
-    this.unsubscribe();
+    this.destroyObservers();
   }
 
   addResolvedData(field, data) {
@@ -52,11 +52,11 @@ class Container extends Component {
 
   trigger(props) {
     this.setState({ pending: true, error: null });
-    const { resolve = {}, subscribe = {}, originalProps } = props;
+    const { resolve = {}, observe = {}, originalProps } = props;
     const resolveKeys = Object.keys(resolve);
-    const subscribeKeys = Object.keys(subscribe);
+    const observeKeys = Object.keys(observe);
 
-    this.resolvedDataTargetSize = resolveKeys.length + subscribeKeys.length;
+    this.resolvedDataTargetSize = resolveKeys.length + observeKeys.length;
 
     resolveKeys.forEach((key) => {
       const promise = resolve[key](originalProps);
@@ -67,14 +67,14 @@ class Container extends Component {
       );
     });
 
-    this.subscribers = subscribeKeys.map((key) => {
-      const subscriber = subscribe[key](originalProps);
-      // validate subscriber, throw meaningful error otherwise
-      subscriber.subscribe(
+    this.observables = observeKeys.map((key) => {
+      const observable = observe[key](originalProps);
+      // validate observable, throw meaningful error otherwise
+      observable.subscribe(
         (data) => this.addResolvedData(key, data),
         (err) => this.setError(err)
       );
-      return subscriber;
+      return observable;
     });
   }
 
