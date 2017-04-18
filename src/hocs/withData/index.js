@@ -97,7 +97,7 @@ class Container extends Component {
   }
 }
 
-export function withResolve(conf) {
+export function withData(conf) {
   return component => {
     // make it pure again
     return (originalProps) => {

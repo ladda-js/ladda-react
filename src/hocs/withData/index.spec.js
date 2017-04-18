@@ -4,7 +4,7 @@ import ReactTestUtils from 'react-dom/test-utils'; // ES6
 import { build, plugins } from 'ladda-cache';
 import sinon from 'sinon';
 
-import { withResolve } from '.';
+import { withData } from '.';
 
 const delay = (t = 1) => new Promise(res => setTimeout(() => res(), t));
 
@@ -54,11 +54,11 @@ const render = (component, props) => {
   return ReactTestUtils.renderIntoDocument(el);
 };
 
-describe('withResolve', () => {
+describe('withData', () => {
   it('passes the original properties down', () => {
     const api = build(createConfig());
     const spy = createSpyComponent();
-    const comp = withResolve({
+    const comp = withData({
       resolve: {
         users: () => api.user.getUsers(),
         user: ({ userId }) => api.user.getUser(userId)
@@ -77,7 +77,7 @@ describe('withResolve', () => {
   it('allows to observe changes', () => {
     const api = build(createConfig(), [plugins.observable()]);
     const spy = createSpyComponent();
-    const comp = withResolve({
+    const comp = withData({
       observe: {
         user: ({ userId }) => api.user.getUser.createObservable(userId)
       }
