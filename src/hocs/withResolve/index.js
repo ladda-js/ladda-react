@@ -16,9 +16,12 @@ class Container extends Component {
     };
   }
 
-  destroyObservers() {
+  destroyObservables() {
     while (this.observables.length) {
-      this.observables.pop().destroy();
+      const observable = this.observables.pop();
+      if (observable.destroy) {
+        observable.destroy();
+      }
     }
   }
 
@@ -27,12 +30,12 @@ class Container extends Component {
   }
 
   componentWillReceiveProps(newProps) {
-    this.destroyObservers();
+    this.destroyObservables();
     this.trigger(newProps);
   }
 
   componentWillUnmount() {
-    this.destroyObservers();
+    this.destroyObservables();
   }
 
   addResolvedData(field, data) {
