@@ -7,7 +7,7 @@ class Container extends Component {
     this.resolvedData = {};
     this.resolvedDataTargetSize = 0;
 
-    this.observables = [];
+    this.subscriptions = [];
 
     this.state = {
       pending: false,
@@ -16,11 +16,11 @@ class Container extends Component {
     };
   }
 
-  destroyObservables() {
-    while (this.observables.length) {
-      const observable = this.observables.pop();
-      if (observable.destroy) {
-        observable.destroy();
+  destroySubscriptions() {
+    while (this.subscriptions.length) {
+      const subscription = this.subscriptions.pop();
+      if (subscription.unsubscribe) {
+        subscription.unsubscribe();
       }
     }
   }
@@ -30,12 +30,12 @@ class Container extends Component {
   }
 
   componentWillReceiveProps(newProps) {
-    this.destroyObservables();
+    this.destroySubscriptions();
     this.trigger(newProps);
   }
 
   componentWillUnmount() {
-    this.destroyObservables();
+    this.destroySubscriptions();
   }
 
   addResolvedData(field, data) {
@@ -70,14 +70,13 @@ class Container extends Component {
       );
     });
 
-    this.observables = observeKeys.map((key) => {
+    this.subscriptions = observeKeys.map((key) => {
       const observable = observe[key](originalProps);
       // validate observable, throw meaningful error otherwise
-      observable.subscribe(
+      return observable.subscribe(
         (data) => this.addResolvedData(key, data),
         (err) => this.setError(err)
       );
-      return observable;
     });
   }
 
