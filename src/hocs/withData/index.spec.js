@@ -1,7 +1,8 @@
 /* eslint-disable no-unused-expressions */
 import { createElement } from 'react';
 import ReactTestUtils from 'react-dom/test-utils'; // ES6
-import { build, plugins } from 'ladda-cache';
+import { build } from 'ladda-cache';
+import { observable } from 'ladda-observable';
 import sinon from 'sinon';
 
 import { withData } from '.';
@@ -75,7 +76,7 @@ describe('withData', () => {
   });
 
   it('allows to observe changes', () => {
-    const api = build(createConfig(), [plugins.observable()]);
+    const api = build(createConfig(), [observable()]);
     const spy = createSpyComponent();
     const comp = withData({
       observe: {
