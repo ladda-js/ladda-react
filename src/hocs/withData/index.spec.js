@@ -92,9 +92,11 @@ describe('withData', () => {
       expect(firstProps.user).to.deep.equal({ id: 'peter', name: 'peter' });
 
       return api.user.updateUser({ id: 'peter', name: 'crona' }).then((nextUser) => {
-        expect(spy).to.have.been.calledTwice;
-        const secondProps = spy.args[1][0];
-        expect(secondProps.user).to.deep.equal(nextUser);
+        return delay().then(() => {
+          expect(spy).to.have.been.calledTwice;
+          const secondProps = spy.args[1][0];
+          expect(secondProps.user).to.deep.equal(nextUser);
+        });
       });
     });
   });
