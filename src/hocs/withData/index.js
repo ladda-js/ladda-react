@@ -1,5 +1,59 @@
 import { createElement, Component } from 'react';
 
+class Retriever {
+  constructor({ type, name, getter, publishData, publishError }) {
+    this.type = type;
+    this.name = name;
+    this.getter = getter;
+    this.publishData = publishData;
+    this.publishError = publishError;
+  }
+
+  get(props) {
+    const promise = this.getter(props);
+    if (!promise || !promise.then) {
+      throw new Error(`${this.type} for ${this.name} did not return a promise!`);
+    }
+    promise.then(this.publishData, this.publishError);
+  }
+
+  // eslint-disable-next-line class-methods-use-this
+  mergeProps(props) {
+    return props;
+  }
+
+  // eslint-disable-next-line class-methods-use-this
+  onDestroy() {}
+}
+
+class ResolveRetriever extends Retriever {
+  constructor({ name, getter, publishData, publishError }) {
+    super({ type: 'resolve', name, getter, publishData, publishError });
+  }
+}
+
+class ObserveRetriever extends Retriever {
+  constructor({ name, getter, publishData, publishError }) {
+    super({ type: 'observe', name, getter, publishData, publishError });
+
+    this.subscription = null;
+  }
+
+  get(props) {
+    const observable = this.getter(props);
+    if (!observable || !observable) {
+      throw new Error(`${this.type} for ${this.name} did not expose a subscribe function`);
+    }
+    this.subscription = observable.subscribe(this.publishData, this.publishError);
+  }
+
+  onDestroy() {
+    if (this.subscription && this.subscription.unsubscribe) {
+      this.subscription.unsubscribe();
+    }
+  }
+}
+
 class Container extends Component {
   constructor(props) {
     super(props);
@@ -7,7 +61,10 @@ class Container extends Component {
     this.resolvedData = {};
     this.resolvedDataTargetSize = 0;
 
+    this.retrievers = {};
+
     this.subscriptions = [];
+    this.pagers = {};
 
     this.state = {
       pending: false,
@@ -16,26 +73,26 @@ class Container extends Component {
     };
   }
 
-  destroySubscriptions() {
-    while (this.subscriptions.length) {
-      const subscription = this.subscriptions.pop();
-      if (subscription.unsubscribe) {
-        subscription.unsubscribe();
-      }
-    }
+  destroy() {
+    Object.keys(this.retrievers).forEach((key) => {
+      this.retrievers[key].onDestroy();
+      delete this.retrievers[key];
+    });
   }
 
   componentWillMount() {
+    this.setupRetrievers(this.props);
     this.trigger(this.props);
   }
 
   componentWillReceiveProps(newProps) {
-    this.destroySubscriptions();
+    this.destroy();
+    this.setupRetrievers(newProps);
     this.trigger(newProps);
   }
 
   componentWillUnmount() {
-    this.destroySubscriptions();
+    this.destroy();
   }
 
   addResolvedData(field, data) {
@@ -49,34 +106,46 @@ class Container extends Component {
     }
   }
 
-  setError(error) {
+  setError(field, error) {
     this.setState({ pending: false, error });
+  }
+
+  setupRetrievers(props) {
+    const { resolve = {}, observe = {} } = props;
+    const resolveKeys = Object.keys(resolve);
+    const observeKeys = Object.keys(observe);
+
+
+    const publishData = (key) => (data) => this.addResolvedData(key, data);
+    const publishError = (key) => (err) => this.setError(key, err);
+
+    resolveKeys.forEach((key) => {
+      this.retrievers[key] = new ResolveRetriever({
+        name: key,
+        publishData: publishData(key),
+        publishError: publishError(key),
+        getter: resolve[key]
+      });
+    });
+
+    observeKeys.forEach((key) => {
+      this.retrievers[key] = new ObserveRetriever({
+        name: key,
+        publishData: publishData(key),
+        publishError: publishError(key),
+        getter: observe[key]
+      });
+    });
+
+    this.resolvedDataTargetSize = resolveKeys.length + observeKeys.length;
   }
 
   trigger(props) {
     this.setState({ pending: true, error: null });
-    const { resolve = {}, observe = {}, originalProps } = props;
-    const resolveKeys = Object.keys(resolve);
-    const observeKeys = Object.keys(observe);
+    const { originalProps } = props;
 
-    this.resolvedDataTargetSize = resolveKeys.length + observeKeys.length;
-
-    resolveKeys.forEach((key) => {
-      const promise = resolve[key](originalProps);
-      // make sure we have a promise, otherwise throw with a clear message
-      promise.then(
-        (data) => this.addResolvedData(key, data),
-        (err) => this.setError(err)
-      );
-    });
-
-    this.subscriptions = observeKeys.map((key) => {
-      const observable = observe[key](originalProps);
-      // validate observable, throw meaningful error otherwise
-      return observable.subscribe(
-        (data) => this.addResolvedData(key, data),
-        (err) => this.setError(err)
-      );
+    Object.keys(this.retrievers).forEach((key) => {
+      this.retrievers[key].get(originalProps);
     });
   }
 
