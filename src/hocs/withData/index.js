@@ -78,6 +78,14 @@ class ObserveRetriever extends Retriever {
   }
 }
 
+const mergePaginateProps = (props, name, obj) => ({
+  ...props,
+  paginate: {
+    ...props.paginate,
+    [name]: obj
+  }
+});
+
 class PaginatedInfiniteOffsetAndLimitResolveRetriever extends Retriever {
   constructor({ name, getter, getProps, publishData, publishError, pagerConfig }) {
     super({ type: 'resolve paginated', name, getter, getProps, publishData, publishError });
@@ -103,24 +111,18 @@ class PaginatedInfiniteOffsetAndLimitResolveRetriever extends Retriever {
   }
 
   mergeProps(props) {
-    return {
-      ...props,
-      paginate: {
-        ...props.paginate,
-        [this.name]: {
-          getNext: () => {
-            this.queueNext();
-            return this.get();
-          }
-        }
+    return mergePaginateProps(props, this.name, {
+      getNext: () => {
+        this.queueNext();
+        return this.get();
       }
-    };
+    });
   }
 }
 
 class PaginatedInfiniteOffsetAndLimitObserveRetriever extends Retriever {
   constructor({ name, getter, getProps, publishData, publishError, pagerConfig }) {
-    super({ type: 'resolve paginated', name, getter, getProps, publishData, publishError });
+    super({ type: 'observe paginated', name, getter, getProps, publishData, publishError });
     this.pagerConfig = pagerConfig;
 
     this.pagerSubscriptions = [];
@@ -168,18 +170,12 @@ class PaginatedInfiniteOffsetAndLimitObserveRetriever extends Retriever {
   }
 
   mergeProps(props) {
-    return {
-      ...props,
-      paginate: {
-        ...props.paginate,
-        [this.name]: {
-          getNext: () => {
-            this.queueNext();
-            return this.get();
-          }
-        }
+    return mergePaginateProps(props, this.name, {
+      getNext: () => {
+        this.queueNext();
+        return this.get();
       }
-    };
+    });
   }
 
   onDestroy() {
