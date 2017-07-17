@@ -110,7 +110,7 @@ describe('withData', () => {
   });
 
   describe('pagination', () => {
-    fit('allows to paginate with limit and offset', () => {
+    it('allows to paginate with limit and offset (resolve)', () => {
       const api = build(createConfig(), [observable()]);
       const spy = createSpyComponent();
       const comp = withData({
@@ -134,6 +134,45 @@ describe('withData', () => {
             expect(spy).to.have.been.calledTwice;
             const secondProps = spy.args[1][0];
             expect(secondProps.users).to.deep.equal([peter, gernot, robin]);
+          });
+        });
+      });
+    });
+
+    it('allows to paginate with limit and offset (observe)', () => {
+      const api = build(createConfig(), [observable()]);
+      const spy = createSpyComponent();
+      const comp = withData({
+        observe: {
+          users: (props, { limit, offset }) => api.user.getUsersPaginated.createObservable({
+            limit,
+            offset
+          })
+        },
+        paginate: {
+          users: withData.PAGINATION.PRESET.infiniteOffsetAndLimit(2, 1)
+        }
+      })(spy);
+
+      render(comp, {});
+
+      return delay().then(() => {
+        expect(spy).to.have.been.called;
+        const firstProps = spy.args[0][0];
+        expect(firstProps.users).to.deep.equal([peter, gernot]);
+
+        return firstProps.paginate.users.getNext().then(() => {
+          return delay().then(() => {
+            expect(spy).to.have.been.calledTwice;
+            const secondProps = spy.args[1][0];
+            expect(secondProps.users).to.deep.equal([peter, gernot, robin]);
+
+            return api.user.updateUser({ id: 'peter', name: 'crona' }).then((nextUser) => {
+              return delay().then(() => {
+                const thirdProps = spy.args[2][0];
+                expect(thirdProps.users[0]).to.deep.equal(nextUser);
+              });
+            });
           });
         });
       });

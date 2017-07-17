@@ -118,6 +118,79 @@ class PaginatedInfiniteOffsetAndLimitResolveRetriever extends Retriever {
   }
 }
 
+class PaginatedInfiniteOffsetAndLimitObserveRetriever extends Retriever {
+  constructor({ name, getter, getProps, publishData, publishError, pagerConfig }) {
+    super({ type: 'resolve paginated', name, getter, getProps, publishData, publishError });
+    this.pagerConfig = pagerConfig;
+
+    this.pagerSubscriptions = [];
+
+    this.queueNext();
+  }
+
+  get() {
+    const props = this.getProps();
+    const tryToPublish = () => {
+      const result = [];
+      for (let i = 0; i < this.pagerSubscriptions.length; i++) {
+        const p = this.pagerSubscriptions[i];
+        if (!p.data) {
+          return;
+        }
+        result.push(...p.data);
+      }
+      this.publishData(result);
+    };
+    this.pagerSubscriptions = this.pagerSubscriptions.map((p) => {
+      if (!p.subscription) {
+        p.subscription = this.getter(props, p.pager).subscribe(
+          (data) => { p.data = data; tryToPublish(); },
+          this.publishError
+        );
+      }
+      return p;
+    });
+    return Promise.resolve();
+  }
+
+  // add pager object, without subscription
+  queueNext() {
+    const pagers = this.pagerSubscriptions.map((p) => p.pager);
+    const prevPager = pagers[pagers.length - 1] || { limit: null, offset: null };
+    const nextPager = this.pagerConfig.getNextPage(prevPager);
+    const p = {
+      pager: nextPager,
+      subscription: null,
+      data: null,
+      error: null
+    };
+    this.pagerSubscriptions.push(p);
+  }
+
+  mergeProps(props) {
+    return {
+      ...props,
+      paginate: {
+        ...props.paginate,
+        [this.name]: {
+          getNext: () => {
+            this.queueNext();
+            return this.get();
+          }
+        }
+      }
+    };
+  }
+
+  onDestroy() {
+    this.pagerSubscriptions.forEach((p) => {
+      if (p.subscription && p.subscription.unsubscribe) {
+        p.subscription.unsubscribe();
+      }
+    });
+  }
+}
+
 class Container extends Component {
   constructor(props) {
     super(props);
@@ -210,13 +283,28 @@ class Container extends Component {
     });
 
     observeKeys.forEach((key) => {
-      this.retrievers[key] = new ObserveRetriever({
-        name: key,
-        publishData: publishData(key),
-        publishError: publishError(key),
-        getProps,
-        getter: observe[key]
-      });
+      if (paginate[key]) {
+        const pagerConfig = paginate[key];
+        const { mode, type } = pagerConfig;
+        if (mode === PAGINATION.MODE.INFINITE && type === PAGINATION.TYPE.OFFSET_AND_LIMIT) {
+          this.retrievers[key] = new PaginatedInfiniteOffsetAndLimitObserveRetriever({
+            name: key,
+            publishData: publishData(key),
+            publishError: publishError(key),
+            getProps,
+            getter: observe[key],
+            pagerConfig
+          });
+        }
+      } else {
+        this.retrievers[key] = new ObserveRetriever({
+          name: key,
+          publishData: publishData(key),
+          publishError: publishError(key),
+          getProps,
+          getter: observe[key]
+        });
+      }
     });
 
     this.resolvedDataTargetSize = resolveKeys.length + observeKeys.length;
