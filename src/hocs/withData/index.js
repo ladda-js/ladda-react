@@ -131,21 +131,10 @@ class PaginatedInfiniteOffsetAndLimitObserveRetriever extends Retriever {
 
   get() {
     const props = this.getProps();
-    const tryToPublish = () => {
-      const result = [];
-      for (let i = 0; i < this.pagerSubscriptions.length; i++) {
-        const p = this.pagerSubscriptions[i];
-        if (!p.data) {
-          return;
-        }
-        result.push(...p.data);
-      }
-      this.publishData(result);
-    };
     this.pagerSubscriptions = this.pagerSubscriptions.map((p) => {
       if (!p.subscription) {
         p.subscription = this.getter(props, p.pager).subscribe(
-          (data) => { p.data = data; tryToPublish(); },
+          (data) => { p.data = data; this.tryToPublish(); },
           this.publishError
         );
       }
@@ -165,6 +154,18 @@ class PaginatedInfiniteOffsetAndLimitObserveRetriever extends Retriever {
       error: null
     };
     this.pagerSubscriptions.push(p);
+  }
+
+  tryToPublish() {
+    const result = [];
+    for (let i = 0; i < this.pagerSubscriptions.length; i++) {
+      const p = this.pagerSubscriptions[i];
+      if (!p.data) {
+        return;
+      }
+      result.push(...p.data);
+    }
+    this.publishData(result);
   }
 
   mergeProps(props) {
