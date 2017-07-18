@@ -21,7 +21,6 @@ const PAGINATION = {
   }
 };
 
-
 class Retriever {
   constructor({ type, name, getter, getProps, publishData, publishError }) {
     this.type = type;
@@ -187,6 +186,28 @@ class PaginatedInfiniteOffsetAndLimitObserveRetriever extends Retriever {
   }
 }
 
+const isInfiniteOffsetAndLimitPager = ({ mode, type }) => {
+  return mode === PAGINATION.MODE.INFINITE && type === PAGINATION.TYPE.OFFSET_AND_LIMIT;
+};
+
+const getResolveRetriever = (pagerConfig) => {
+  if (pagerConfig) {
+    if (isInfiniteOffsetAndLimitPager(pagerConfig)) {
+      return PaginatedInfiniteOffsetAndLimitResolveRetriever;
+    }
+  }
+  return ResolveRetriever;
+};
+
+const getObserveRetriever = (pagerConfig) => {
+  if (pagerConfig) {
+    if (isInfiniteOffsetAndLimitPager(pagerConfig)) {
+      return PaginatedInfiniteOffsetAndLimitObserveRetriever;
+    }
+  }
+  return ObserveRetriever;
+};
+
 class Container extends Component {
   constructor(props) {
     super(props);
@@ -245,62 +266,37 @@ class Container extends Component {
 
   setupRetrievers(props) {
     const { resolve = {}, observe = {}, paginate = {}, originalProps } = props;
-    const getProps = () => originalProps;
     const resolveKeys = Object.keys(resolve);
     const observeKeys = Object.keys(observe);
 
-
+    const getProps = () => originalProps;
     const publishData = (key) => (data) => this.addResolvedData(key, data);
     const publishError = (key) => (err) => this.setError(key, err);
 
     resolveKeys.forEach((key) => {
-      if (paginate[key]) {
-        const pagerConfig = paginate[key];
-        const { mode, type } = pagerConfig;
-        if (mode === PAGINATION.MODE.INFINITE && type === PAGINATION.TYPE.OFFSET_AND_LIMIT) {
-          this.retrievers[key] = new PaginatedInfiniteOffsetAndLimitResolveRetriever({
-            name: key,
-            publishData: publishData(key),
-            publishError: publishError(key),
-            getProps,
-            getter: resolve[key],
-            pagerConfig
-          });
-        }
-      } else {
-        this.retrievers[key] = new ResolveRetriever({
-          name: key,
-          publishData: publishData(key),
-          publishError: publishError(key),
-          getProps,
-          getter: resolve[key]
-        });
-      }
+      const pagerConfig = paginate[key];
+      const Constructor = getResolveRetriever(pagerConfig);
+      this.retrievers[key] = new Constructor({
+        name: key,
+        publishData: publishData(key),
+        publishError: publishError(key),
+        getProps,
+        getter: resolve[key],
+        pagerConfig
+      });
     });
 
     observeKeys.forEach((key) => {
-      if (paginate[key]) {
-        const pagerConfig = paginate[key];
-        const { mode, type } = pagerConfig;
-        if (mode === PAGINATION.MODE.INFINITE && type === PAGINATION.TYPE.OFFSET_AND_LIMIT) {
-          this.retrievers[key] = new PaginatedInfiniteOffsetAndLimitObserveRetriever({
-            name: key,
-            publishData: publishData(key),
-            publishError: publishError(key),
-            getProps,
-            getter: observe[key],
-            pagerConfig
-          });
-        }
-      } else {
-        this.retrievers[key] = new ObserveRetriever({
-          name: key,
-          publishData: publishData(key),
-          publishError: publishError(key),
-          getProps,
-          getter: observe[key]
-        });
-      }
+      const pagerConfig = paginate[key];
+      const Constructor = getObserveRetriever(pagerConfig);
+      this.retrievers[key] = new Constructor({
+        name: key,
+        publishData: publishData(key),
+        publishError: publishError(key),
+        getProps,
+        getter: observe[key],
+        pagerConfig
+      });
     });
 
     this.resolvedDataTargetSize = resolveKeys.length + observeKeys.length;
