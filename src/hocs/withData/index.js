@@ -49,14 +49,14 @@ class Retriever {
 }
 
 class ResolveRetriever extends Retriever {
-  constructor({ name, getter, getProps, publishData, publishError }) {
-    super({ type: 'resolve', name, getter, getProps, publishData, publishError });
+  constructor(args) {
+    super({ type: 'resolve', ...args });
   }
 }
 
 class ObserveRetriever extends Retriever {
-  constructor({ name, getter, getProps, publishData, publishError }) {
-    super({ type: 'observe', name, getter, getProps, publishData, publishError });
+  constructor(args) {
+    super({ type: 'observe', ...args });
 
     this.subscription = null;
   }
@@ -86,8 +86,8 @@ const mergePaginateProps = (props, name, obj) => ({
 });
 
 class PaginatedInfiniteOffsetAndLimitResolveRetriever extends Retriever {
-  constructor({ name, getter, getProps, publishData, publishError, pagerConfig }) {
-    super({ type: 'resolve paginated', name, getter, getProps, publishData, publishError });
+  constructor({ pagerConfig, ...args }) {
+    super({ type: 'resolve paginated', ...args });
     this.pagerConfig = pagerConfig;
 
     this.pagers = [];
@@ -120,8 +120,8 @@ class PaginatedInfiniteOffsetAndLimitResolveRetriever extends Retriever {
 }
 
 class PaginatedInfiniteOffsetAndLimitObserveRetriever extends Retriever {
-  constructor({ name, getter, getProps, publishData, publishError, pagerConfig }) {
-    super({ type: 'observe paginated', name, getter, getProps, publishData, publishError });
+  constructor({ pagerConfig, ...args }) {
+    super({ type: 'observe paginated', ...args });
     this.pagerConfig = pagerConfig;
 
     this.pagerSubscriptions = [];
@@ -154,7 +154,6 @@ class PaginatedInfiniteOffsetAndLimitObserveRetriever extends Retriever {
     return Promise.resolve();
   }
 
-  // add pager object, without subscription
   queueNext() {
     const pagers = this.pagerSubscriptions.map((p) => p.pager);
     const prevPager = pagers[pagers.length - 1] || { limit: null, offset: null };
