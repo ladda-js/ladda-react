@@ -162,16 +162,14 @@ describe('withData', () => {
         expect(firstProps.users).to.deep.equal([peter, gernot]);
 
         return firstProps.paginate.users.getNext().then(() => {
-          return delay().then(() => {
-            expect(spy).to.have.been.calledTwice;
-            const secondProps = spy.args[1][0];
-            expect(secondProps.users).to.deep.equal([peter, gernot, robin]);
+          expect(spy).to.have.been.calledTwice;
+          const secondProps = spy.args[1][0];
+          expect(secondProps.users).to.deep.equal([peter, gernot, robin]);
 
-            return api.user.updateUser({ id: 'peter', name: 'crona' }).then((nextUser) => {
-              return delay().then(() => {
-                const thirdProps = spy.args[2][0];
-                expect(thirdProps.users[0]).to.deep.equal(nextUser);
-              });
+          return api.user.updateUser({ id: 'peter', name: 'crona' }).then((nextUser) => {
+            return delay().then(() => {
+              const thirdProps = spy.args[2][0];
+              expect(thirdProps.users[0]).to.deep.equal(nextUser);
             });
           });
         });

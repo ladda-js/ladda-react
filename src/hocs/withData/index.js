@@ -21,6 +21,24 @@ const PAGINATION = {
   }
 };
 
+const every = (predicate, collection) => {
+  for (let i = 0; i < collection.length; i++) {
+    if (!predicate(collection[i])) {
+      return false;
+    }
+  }
+  return true;
+};
+
+const any = (predicate, collection) => {
+  for (let i = 0; i < collection.length; i++) {
+    if (predicate(collection[i])) {
+      return true;
+    }
+  }
+  return false;
+};
+
 class Retriever {
   constructor({ type, name, getter, getProps, publishData, publishError }) {
     this.type = type;
@@ -99,7 +117,7 @@ class PaginatedInfiniteOffsetAndLimitResolveRetriever extends Retriever {
     const props = this.getProps();
     return Promise.all(this.pagers.map((pager) => this.getter(props, pager))).then(
       (lists) => this.publishData(lists.reduce((mem, list) => [...mem, ...list], [])),
-      this.publishError
+      (err) => Promise.reject(err)
     );
   }
 
@@ -131,16 +149,28 @@ class PaginatedInfiniteOffsetAndLimitObserveRetriever extends Retriever {
 
   get() {
     const props = this.getProps();
-    this.pagerSubscriptions = this.pagerSubscriptions.map((p) => {
-      if (!p.subscription) {
-        p.subscription = this.getter(props, p.pager).subscribe(
-          (data) => { p.data = data; this.tryToPublish(); },
-          this.publishError
-        );
-      }
-      return p;
+    return new Promise((resolve) => {
+      const tryResolve = (d) => {
+        if (every(p_ => p_.data, this.pagerSubscriptions)) {
+          resolve(d);
+        }
+      };
+      this.pagerSubscriptions = this.pagerSubscriptions.map((p) => {
+        if (!p.subscription) {
+          p.firstLoad = true;
+          p.subscription = this.getter(props, p.pager).subscribe(
+            (data) => {
+              p.data = data;
+              p.firstLoad = false;
+              this.tryToPublish();
+              tryResolve(data);
+            },
+            this.publishError
+          );
+        }
+        return p;
+      });
     });
-    return Promise.resolve();
   }
 
   queueNext() {
@@ -173,7 +203,8 @@ class PaginatedInfiniteOffsetAndLimitObserveRetriever extends Retriever {
       getNext: () => {
         this.queueNext();
         return this.get();
-      }
+      },
+      isLoading: any(p => !p.data, this.pagerSubscriptions)
     });
   }
 
