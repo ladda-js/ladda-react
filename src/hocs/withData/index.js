@@ -72,6 +72,20 @@ class ResolveRetriever extends Retriever {
   }
 }
 
+class PollRetriever extends Retriever {
+  constructor(args) {
+    super({ type: 'poll', ...args });
+    this.interval = args.interval ? setInterval(() => this.get(), args.interval): null;
+  }
+
+  onDestroy() {
+    if (this.interval) {
+      clearInterval(this.interval);
+      this.interval = null;
+    }
+  }
+}
+
 class ObserveRetriever extends Retriever {
   constructor(args) {
     super({ type: 'observe', ...args });
@@ -296,9 +310,10 @@ class Container extends Component {
   }
 
   setupRetrievers(props) {
-    const { resolve = {}, observe = {}, paginate = {}, originalProps } = props;
+    const { resolve = {}, observe = {}, poll = {}, paginate = {}, originalProps } = props;
     const resolveKeys = Object.keys(resolve);
     const observeKeys = Object.keys(observe);
+    const pollKeys = Object.keys(poll);
 
     const getProps = () => originalProps;
     const publishData = (key) => (data) => this.addResolvedData(key, data);
@@ -330,7 +345,20 @@ class Container extends Component {
       });
     });
 
-    this.resolvedDataTargetSize = resolveKeys.length + observeKeys.length;
+    pollKeys.forEach((key) => {
+      const getter = poll[key].resolve;
+      const interval = (poll[key].interval || (() => null))(originalProps);
+      this.retrievers[key] = new PollRetriever({
+        name: key,
+        publishData: publishData(key),
+        publishError: publishError(key),
+        getProps,
+        getter,
+        interval
+      });
+    });
+
+    this.resolvedDataTargetSize = resolveKeys.length + observeKeys.length + pollKeys.length;
   }
 
   trigger() {

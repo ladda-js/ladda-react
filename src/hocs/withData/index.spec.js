@@ -14,7 +14,6 @@ const gernot = { id: 'gernot', name: 'gernot' };
 const robin = { id: 'robin', name: 'robin' };
 const paulo = { id: 'paulo', name: 'paulo '};
 const timur = { id: 'timur', name: 'timur '};
-
 const createConfig = () => {
   const users = [peter, gernot, robin, paulo, timur].reduce((m, u) => {
     m[u.id] = u;
@@ -171,6 +170,79 @@ describe('withData', () => {
               const thirdProps = spy.args[2][0];
               expect(thirdProps.users[0]).to.deep.equal(nextUser);
             });
+          });
+        });
+      });
+    });
+  });
+
+  describe('poll', () => {
+    it('does not poll when interval is set to a falsy value', () => {
+      const api = build(createConfig());
+      const spy = createSpyComponent();
+      const comp = withData({
+        poll: {
+          users: {
+            resolve: () => api.user.getUsers(),
+            interval: () => null
+          }
+        }
+      })(spy);
+
+      render(comp, {});
+
+      return delay().then(() => {
+        expect(spy).to.have.been.calledOnce;
+        return delay(10).then(() => {
+          expect(spy).to.have.been.calledOnce;
+        });
+      });
+    });
+
+    it('does not poll when interval is not defined', () => {
+      const api = build(createConfig());
+      const spy = createSpyComponent();
+      const comp = withData({
+        poll: {
+          users: {
+            resolve: () => api.user.getUsers(),
+          }
+        }
+      })(spy);
+
+      render(comp, {});
+
+      return delay().then(() => {
+        expect(spy).to.have.been.calledOnce;
+        return delay(10).then(() => {
+          expect(spy).to.have.been.calledOnce;
+        });
+      });
+    });
+
+    it('polls with the given interval', () => {
+      // need to write an own setInterval implementation
+      // to make this really robust!
+
+      const api = build(createConfig());
+      const spy = createSpyComponent();
+      const comp = withData({
+        poll: {
+          users: {
+            resolve: () => api.user.getUsers(),
+            interval: () => 9
+          }
+        }
+      })(spy);
+
+      render(comp, {});
+
+      return delay().then(() => {
+        expect(spy).to.have.been.calledOnce;
+        return delay(10).then(() => {
+          expect(spy).to.have.been.calledTwice;
+          return delay(10).then(() => {
+            expect(spy).to.have.been.calledThrice;
           });
         });
       });
