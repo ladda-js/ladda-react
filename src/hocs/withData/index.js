@@ -75,7 +75,7 @@ class ResolveRetriever extends Retriever {
 class PollRetriever extends Retriever {
   constructor(args) {
     super({ type: 'poll', ...args });
-    this.interval = args.interval ? setInterval(() => this.get(), args.interval): null;
+    this.interval = args.interval ? setInterval(() => this.get(), args.interval) : null;
   }
 
   onDestroy() {

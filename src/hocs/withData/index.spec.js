@@ -205,7 +205,7 @@ describe('withData', () => {
       const comp = withData({
         poll: {
           users: {
-            resolve: () => api.user.getUsers(),
+            resolve: () => api.user.getUsers()
           }
         }
       })(spy);
