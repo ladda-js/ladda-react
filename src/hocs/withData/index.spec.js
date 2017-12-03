@@ -220,6 +220,14 @@ describe('withData', () => {
             expect(spy).to.have.been.calledTwice;
             const secondProps = spy.args[1][0];
             expect(secondProps.users).to.deep.equal([peter, gernot, robin, paulo]);
+            expect(secondProps.paginate.users.hasNext).to.be.true;
+
+            return secondProps.paginate.users.getNext().then(() => {
+              expect(spy).to.have.been.calledThrice;
+              const thirdProps = spy.args[2][0];
+              expect(thirdProps.users).to.deep.equal([peter, gernot, robin, paulo, timur]);
+              expect(thirdProps.paginate.users.hasNext).to.be.false;
+            });
           });
         });
       });
