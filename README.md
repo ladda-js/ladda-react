@@ -17,14 +17,17 @@ Ladda-react provides helper functions to easily integrate React apps with the da
 ```jsx
 import { withData } from 'ladda-react';
 
-return withData({
+const config = {
     resolve: {
         mails: (props) => api.getMails(props.userId), // api.getMails() returns a promise
     },
     pendingComponent: () => <LoadingComponent />,
-    errorComponent: () => <ErrorComponent />,
+    errorComponent: () => <ErrorComponent />
     // ... and more! Check "Config" for more options.
-})(MyComponent);
+};
+
+return withData(config)(MyComponent);
+// => MyComponent will have `userId` and `mails` available as props.
 ```
 
 ### Config
