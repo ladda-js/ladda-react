@@ -6,7 +6,7 @@ Ladda-react provides helper functions to easily integrate React apps with the da
 
     npm install --save ladda-react
 
-# Functions
+# Higher-Order Components
 
 ## withData(config)
 
@@ -14,27 +14,31 @@ Ladda-react provides helper functions to easily integrate React apps with the da
 
 ### Example
 
-    import { withData } from 'ladda-react';
-    
-    withData({
-        resolve: {
-            mails: (props) => api.getMails(props.userId), // api.getMails() returns a promise
-        },
-        pendingComponent: () => <LoadingComponent />,
-        errorComponent: () => <ErrorComponent />,
-        // ... and more! Check "Config" for more options.
-    })(MyComponent)
+```jsx
+import { withData } from 'ladda-react';
+
+return withData({
+    resolve: {
+        mails: (props) => api.getMails(props.userId), // api.getMails() returns a promise
+    },
+    pendingComponent: () => <LoadingComponent />,
+    errorComponent: () => <ErrorComponent />,
+    // ... and more! Check "Config" for more options.
+})(MyComponent);
+```
 
 ### Config
 
-| Key                  | Type            | Example |
-| -------------------- | --------------- | ------- |
-| **resolve**          | object          |         |
-| **observe**          | object          |         |
-| **paginate**         | object          |         |
-| **pendingComponent** | React Component |         |
-| **errorComponent**   | React Component |         |
+| Key                  | Type            |
+| -------------------- | --------------- |
+| **observe**          | object          |
+| **resolve**          | object          |
+| **paginate**         | object          |
+| **poll**             | object          |
+| **pendingComponent** | React Component |
+| **errorComponent**   | React Component |
 
+_More details to follow._
 
 # Development
 
