@@ -32,6 +32,15 @@ const createConfig = () => {
   );
   getUsersPaginated.operation = 'READ';
 
+  const getUsersWithCursor = ({ cursor, limit }) => {
+    const vals = Object.values(users);
+    const i = cursor ? vals.map(v => v.id).indexOf(cursor) : 0;
+    const result = vals.slice(i, i + limit);
+    result.cursor = (i + limit) < vals.length ? vals[i + limit].id : null;
+    return Promise.resolve(result);
+  };
+  getUsersWithCursor.operation = 'READ';
+
   const updateUser = (nextUser) => {
     const { id } = nextUser;
     const user = users[id];
@@ -48,7 +57,14 @@ const createConfig = () => {
 
   return {
     user: {
-      api: { getUser, getUsers, getUsersPaginated, updateUser, removeUser }
+      api: {
+        getUser,
+        getUsers,
+        getUsersPaginated,
+        getUsersWithCursor,
+        updateUser,
+        removeUser
+      }
     }
   };
 };
@@ -169,6 +185,48 @@ describe('withData', () => {
             return delay().then(() => {
               const thirdProps = spy.args[2][0];
               expect(thirdProps.users[0]).to.deep.equal(nextUser);
+            });
+          });
+        });
+      });
+    });
+
+    it('allows to paginate with a cursor', () => {
+      const api = build(createConfig(), [observable()]);
+      const spy = createSpyComponent();
+      const comp = withData({
+        resolve: {
+          users: (props, cursor) => api.user.getUsersWithCursor({ cursor, limit: 2 })
+        },
+        paginate: {
+          users: {
+            ...withData.PAGINATION.PRESET.infiniteCursor(),
+            getCursor: (r) => r.cursor
+          }
+        }
+      })(spy);
+
+      render(comp, {});
+
+      return delay().then(() => {
+        expect(spy).to.have.been.called;
+        const firstProps = spy.args[0][0];
+        expect(firstProps.users.length).to.equal(2);
+        expect(firstProps.users).to.contain(peter);
+        expect(firstProps.users).to.contain(gernot);
+
+        return firstProps.paginate.users.getNext().then(() => {
+          return delay().then(() => {
+            expect(spy).to.have.been.calledTwice;
+            const secondProps = spy.args[1][0];
+            expect(secondProps.users).to.deep.equal([peter, gernot, robin, paulo]);
+            expect(secondProps.paginate.users.hasNext).to.be.true;
+
+            return secondProps.paginate.users.getNext().then(() => {
+              expect(spy).to.have.been.calledThrice;
+              const thirdProps = spy.args[2][0];
+              expect(thirdProps.users).to.deep.equal([peter, gernot, robin, paulo, timur]);
+              expect(thirdProps.paginate.users.hasNext).to.be.false;
             });
           });
         });

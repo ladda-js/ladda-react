@@ -2,7 +2,8 @@ import { createElement, Component } from 'react';
 
 const PAGINATION = {
   TYPE: {
-    OFFSET_AND_LIMIT: 'offsetAndLimit'
+    OFFSET_AND_LIMIT: 'offsetAndLimit',
+    CURSOR: 'cursor'
   },
   MODE: {
     INFINITE: 'infinite'
@@ -17,6 +18,13 @@ const PAGINATION = {
         }
         return { offset: offset + limit, limit: nextSize };
       }
+    }),
+    infiniteCursor: (startingCursor) => ({
+      type: PAGINATION.TYPE.CURSOR,
+      mode: PAGINATION.MODE.INFINITE,
+      startingCursor,
+      getCursor: (r) => r.cursor,
+      reduceResults: (mem, l) => [...mem, ...l]
     })
   }
 };
@@ -116,6 +124,57 @@ const mergePaginateProps = (props, name, obj) => ({
     [name]: obj
   }
 });
+
+class PaginatedInfiniteCursorRetriever extends Retriever {
+  constructor({ pagerConfig, ...args}) {
+    super({ type: 'resolve with cursor', ...args });
+
+    this.pagerConfig = pagerConfig;
+
+    this.pastCursors = [];
+    this.nextCursors = pagerConfig.startingCursor || null;
+
+    this.hasNext = true;
+
+    this.pending = null;
+  }
+
+  get() {
+    if (this.pending) {
+      return this.pending;
+    }
+
+    const props = this.getProps();
+
+    this.pending = Promise.all([
+      ...this.pastCursors.map((cursor) => this.getter(props, cursor)),
+      this.getter(props, this.nextCursor).then(response => {
+        const nextCursor = this.pagerConfig.getCursor(response);
+
+        this.pastCursors.push(this.nextCursor);
+        this.nextCursor = nextCursor;
+        this.hasNext = !!nextCursor;
+        this.pending = null;
+
+        return response;
+      })
+    ]).then((results) => this.publishData(results.reduce(this.pagerConfig.reduceResults)));
+
+    this.pending.catch((err) => {
+      this.pending = null;
+      return Promise.reject(err);
+    });
+
+    return this.pending;
+  }
+
+  mergeProps(props) {
+    return mergePaginateProps(props, this.name, {
+      getNext: () => this.get(),
+      hasNext: this.hasNext
+    });
+  }
+}
 
 class PaginatedInfiniteOffsetAndLimitResolveRetriever extends Retriever {
   constructor({ pagerConfig, ...args }) {
@@ -235,10 +294,18 @@ const isInfiniteOffsetAndLimitPager = ({ mode, type }) => {
   return mode === PAGINATION.MODE.INFINITE && type === PAGINATION.TYPE.OFFSET_AND_LIMIT;
 };
 
+const isInfiniteCursor = ({ mode, type }) => {
+  return mode === PAGINATION.MODE.INFINITE && type === PAGINATION.TYPE.CURSOR;
+};
+
 const getResolveRetriever = (pagerConfig) => {
   if (pagerConfig) {
     if (isInfiniteOffsetAndLimitPager(pagerConfig)) {
       return PaginatedInfiniteOffsetAndLimitResolveRetriever;
+    }
+
+    if (isInfiniteCursor(pagerConfig)) {
+      return PaginatedInfiniteCursorRetriever;
     }
   }
   return ResolveRetriever;
