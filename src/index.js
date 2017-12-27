@@ -1,3 +1,3 @@
-import { withData } from './hocs/withData';
+import { withData } from './hocs/withData/index';
 
 export { withData };
