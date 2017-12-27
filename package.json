@@ -4,9 +4,10 @@
   "description": "React bindings for Ladda",
   "main": "dist/bundle.js",
   "module": "dist/module.js",
+  "files": ["dist/module.js"],
   "dependencies": {},
   "peerDependencies": {
-    "react": "^15.5.3"
+    "react": "^15.6.0"
   },
   "devDependencies": {
     "babel-core": "^6.9.0",
