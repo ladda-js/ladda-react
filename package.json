@@ -1,13 +1,13 @@
 {
   "name": "ladda-react",
-  "version": "0.2.12",
+  "version": "0.2.13",
   "description": "React bindings for Ladda",
   "main": "dist/bundle.js",
   "module": "dist/module.js",
   "files": ["dist/module.js"],
   "dependencies": {},
   "peerDependencies": {
-    "react": "^15.6.0"
+    "react": "^16.0.0"
   },
   "devDependencies": {
     "babel-core": "^6.9.0",
