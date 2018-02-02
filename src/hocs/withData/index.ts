@@ -97,20 +97,20 @@ const any = <T>(predicate:(e:T)=>boolean, collection:T[]) => {
 };
 
 
-interface RetrieverConfig<T, Props> {
+interface RetrieverConfig<T, OP> {
   name: string;
-  getProps: ()=>Props;
+  getProps: ()=>OP;
   publishData: (data:T)=>void;
   publishError: (error:Error)=>void;
 }
 
-abstract class Retriever<T, Props> {
+abstract class Retriever<T, OP> {
   name: string;
-  getProps: ()=>Props;
+  getProps: ()=>OP;
   publishData: (data:T)=>void;
   publishError: (error:Error)=>void;
 
-  constructor({ name, getProps, publishData, publishError }:RetrieverConfig<T, Props>) {
+  constructor({ name, getProps, publishData, publishError }:RetrieverConfig<T, OP>) {
     this.name = name;
     this.getProps = getProps;
     this.publishData = publishData;
@@ -120,7 +120,7 @@ abstract class Retriever<T, Props> {
   abstract get():Promise<void> 
 
   // eslint-disable-next-line class-methods-use-this
-  mergeProps(props:Props) {
+  mergeProps(props:ContainerProps<T, OP>) {
     return props;
   }
 
@@ -180,16 +180,16 @@ interface Subscription {
   unsubscribe():void
 }
 
-interface ObserveRetrieverConfig<T, Props> extends RetrieverConfig<T, Props> {
-  getter(props:Props):Observable<T>
+interface ObserveRetrieverConfig<T, OP> extends RetrieverConfig<T, OP> {
+  getter(props:OP):Observable<T>
 }
 
-class ObserveRetriever<T, Props> extends Retriever<T, Props> {
+class ObserveRetriever<T, OP> extends Retriever<T, OP> {
   type = 'observe'
   subscription: null | Subscription
-  getter: (props:Props) => Observable<T>
+  getter: (props:OP) => Observable<T>
 
-  constructor(args:ObserveRetrieverConfig<T, Props>) {
+  constructor(args:ObserveRetrieverConfig<T, OP>) {
     super(args);
     this.getter = args.getter;
     this.subscription = null;
@@ -211,41 +211,34 @@ class ObserveRetriever<T, Props> extends Retriever<T, Props> {
   }
 }
 
-/**
- * TODO: Define what Props actually are/contain
- */
-interface PropsWithPaginate {
-  paginate: {[name: string]: {}}
-}
-
 interface PaginateNext<T> {
   getNext: ()=>Promise<T>
   hasNext: boolean
 }
 
-const mergePaginateProps = <T>(props:PropsWithPaginate, name:string, obj:T) => ({
+const mergePaginateProps = <T, OP>(props:ContainerProps<T, OP>, name:string, pagerConfig:PagerConfig):ContainerProps<T, OP> => ({
   ...props,
   paginate: {
     ...props.paginate,
-    [name]: obj
+    [name]: pagerConfig
   }
 });
 
-interface PaginatedInfiniteCursorRetrieverConfig<T> extends RetrieverConfig<T[], PropsWithPaginate> {
+interface PaginatedInfiniteCursorRetrieverConfig<T, OP> extends RetrieverConfig<T[], OP> {
   pagerConfig: PagerConfigCursor<Response<T>>
-  getter: (props:PropsWithPaginate, cursor: Cursor|null) => Promise<Response<T>>
+  getter: (props:OP, cursor: Cursor|null) => Promise<Response<T>>
 }
 
-class PaginatedInfiniteCursorRetriever<T> extends Retriever<T[], PropsWithPaginate> {
+class PaginatedInfiniteCursorRetriever<T, OP> extends Retriever<T[], OP> {
   type = 'resolve with cursor'
   pagerConfig: PagerConfigCursor<Response<T>>
   pastCursors: Cursor[] = []
   nextCursor: Cursor
   hasNext: boolean = true
   pending: null | Promise<void> = null
-  getter: (props:PropsWithPaginate, cursor: Cursor|null) => Promise<Response<T>>
+  getter: (props:OP, cursor: Cursor|null) => Promise<Response<T>>
 
-  constructor(args:PaginatedInfiniteCursorRetrieverConfig<T>) {
+  constructor(args:PaginatedInfiniteCursorRetrieverConfig<T, OP>) {
     super(args);
     this.pagerConfig = args.pagerConfig;
     this.getter = args.getter
@@ -281,26 +274,27 @@ class PaginatedInfiniteCursorRetriever<T> extends Retriever<T[], PropsWithPagina
     return this.pending;
   }
 
-  mergeProps(props:PropsWithPaginate) {
-    return mergePaginateProps(props, this.name, {
+  mergeProps(props:ContainerProps<T, OP>) {
+    const pagerConfig = {
       getNext: () => this.get(),
       hasNext: this.hasNext
-    });
+    }
+    return mergePaginateProps(props, this.name, pagerConfig);
   }
 }
 
-interface PaginatedInfiniteOffsetAndLimitResolveRetrieverConfig<T> extends RetrieverConfig<T[], PropsWithPaginate> {
-  getter: (props:PropsWithPaginate, pager:Pager) => Promise<T[]>
+interface PaginatedInfiniteOffsetAndLimitResolveRetrieverConfig<T, OP> extends RetrieverConfig<T[], OP> {
+  getter: (props:OP, pager:Pager) => Promise<T[]>
   pagerConfig: PagerConfigOffset<T>
 }
 
-class PaginatedInfiniteOffsetAndLimitResolveRetriever<T> extends Retriever<T[], PropsWithPaginate> {
+class PaginatedInfiniteOffsetAndLimitResolveRetriever<T, OP> extends Retriever<T[], OP> {
   type = 'resolve paginated'
   pagerConfig:PagerConfigOffset<T>
   pagers: Pager[] = [];
-  getter: (props:PropsWithPaginate, pager:Pager) => Promise<T[]>
+  getter: (props:OP, pager:Pager) => Promise<T[]>
 
-  constructor(args:PaginatedInfiniteOffsetAndLimitResolveRetrieverConfig<T>) {
+  constructor(args:PaginatedInfiniteOffsetAndLimitResolveRetrieverConfig<T, OP>) {
     super(args);
     this.getter = args.getter
     this.pagerConfig = args.pagerConfig;
@@ -321,13 +315,14 @@ class PaginatedInfiniteOffsetAndLimitResolveRetriever<T> extends Retriever<T[], 
     this.pagers.push(nextPager);
   }
 
-  mergeProps(props:PropsWithPaginate) {
-    return mergePaginateProps(props, this.name, {
+  mergeProps(props:ContainerProps<T, OP>) {
+    const pagerConfig = {
       getNext: () => {
         this.queueNext();
         return this.get();
       }
-    });
+    }
+    return mergePaginateProps(props, this.name, pagerConfig);
   }
 }
 
@@ -339,18 +334,18 @@ interface PagerSubscription<T> {
   error: null | Error
 }
 
-interface PaginatedInfiniteOffsetAndLimitObserveRetrieverConfig<T> extends RetrieverConfig<T[], PropsWithPaginate> {
+interface PaginatedInfiniteOffsetAndLimitObserveRetrieverConfig<T, OP> extends RetrieverConfig<T[], OP> {
   pagerConfig: PagerConfigOffset<T>
-  getter: (props:PropsWithPaginate, pager:Pager)=>Observable<T[]>
+  getter: (props:OP, pager:Pager)=>Observable<T[]>
 }
 
-class PaginatedInfiniteOffsetAndLimitObserveRetriever<T> extends Retriever<T[], PropsWithPaginate> {
+class PaginatedInfiniteOffsetAndLimitObserveRetriever<T, OP> extends Retriever<T[], OP> {
   type = 'observe paginated'
   pagerConfig: PagerConfigOffset<T>
   pagerSubscriptions: PagerSubscription<T>[] = []
-  getter: (props:PropsWithPaginate, pager:Pager)=>Observable<T[]>
+  getter: (props:OP, pager:Pager)=>Observable<T[]>
 
-  constructor(args:PaginatedInfiniteOffsetAndLimitObserveRetrieverConfig<T>) {
+  constructor(args:PaginatedInfiniteOffsetAndLimitObserveRetrieverConfig<T, OP>) {
     super(args);
     this.getter = args.getter
     this.pagerConfig = args.pagerConfig;
@@ -408,14 +403,15 @@ class PaginatedInfiniteOffsetAndLimitObserveRetriever<T> extends Retriever<T[], 
     this.publishData(result);
   }
 
-  mergeProps(props:PropsWithPaginate) {
-    return mergePaginateProps(props, this.name, {
+  mergeProps(props:ContainerProps<T, OP>) {
+    const pagerConfig = {
       getNext: () => {
         this.queueNext();
         return this.get();
       },
       isLoading: any(p => !p.data, this.pagerSubscriptions)
-    });
+    }
+    return mergePaginateProps(props, this.name, pagerConfig);
   }
 
   onDestroy() {
@@ -457,11 +453,14 @@ const getObserveRetriever = (pagerConfig:PagerConfig) => {
   return ObserveRetriever;
 };
 
-interface ContainerProps<T, OP> {
+interface Config<T, OP> {
   resolve: {[key:string]: (props:OP, pager?:Pager) => Promise<T>}
   observe: {[key:string]: (props:OP) => Observable<T>}
   poll: {[key:string]: (props:OP) => Promise<T>}
   paginate: {[key: string]: PagerConfig | undefined}
+}
+
+interface ContainerProps<T, OP> extends Config<T, OP>{
   originalProps: OP
 }
 
@@ -546,7 +545,7 @@ class Container<T, OP> extends Component<ContainerProps<T, OP>, ContainerState> 
     resolveKeys.forEach((key) => {
       const pagerConfig = paginate[key];
       if (pagerConfig && isInfiniteOffsetAndLimitPager(pagerConfig)) {
-        this.retrievers[key] = new PaginatedInfiniteOffsetAndLimitResolveRetriever({
+        this.retrievers[key] = new PaginatedInfiniteOffsetAndLimitResolveRetriever<T, OP>({
           name: key,
           publishData: publishData(key),
           publishError: publishError(key),
@@ -631,10 +630,10 @@ class Container<T, OP> extends Component<ContainerProps<T, OP>, ContainerState> 
   }
 }
 
-export function withData(conf) {
+export function withData<T, OP>(conf:Config<T, OP>) {
   return component => {
     // make it pure again
-    return (originalProps) => {
+    return (originalProps:OP) => {
       const props = { ...conf, originalProps, component };
       return createElement(Container, props);
     };
