@@ -453,31 +453,31 @@ const getObserveRetriever = (pagerConfig:PagerConfig) => {
   return ObserveRetriever;
 };
 
-interface Config<T, OP> {
-  resolve: {[key:string]: (props:OP, pager?:Pager) => Promise<T>}
-  observe: {[key:string]: (props:OP) => Observable<T>}
-  poll: {[key:string]: (props:OP) => Promise<T>}
-  paginate: {[key: string]: PagerConfig | undefined}
+interface Config<Map, OP> {
+  resolve: {[key in keyof Map]: (props:OP, pager?:Pager) => Promise<Map[key]>}
+  observe: {[key in keyof Map]: (props:OP) => Observable<Map[key]>}
+  poll: {[key in keyof Map]: (props:OP) => Promise<Map[key]>}
+  paginate: {[key in keyof Map]: PagerConfig | undefined}
 }
 
-interface ContainerProps<T, OP> extends Config<T, OP>{
+interface ContainerProps<Map, OP> extends Config<Map, OP>{
   originalProps: OP
 }
 
-interface ContainerState {
+interface ContainerState<Map> {
   pending: boolean,
   error: null|Error,
-  resolvedProps: null | {[field: string]: {}}
+  resolvedProps: null | {[key in keyof Map]: Map[key]}
 }
 
-class Container<T, OP> extends Component<ContainerProps<T, OP>, ContainerState> {
-  resolvedData: {[field: string]: {}}
+class Container<Map, OP> extends Component<ContainerProps<Map, OP>, ContainerState<Map>> {
+  resolvedData: {[key in keyof Map]?: Map[key]}
   resolvedDataTargetSize: number
-  retrievers: {[name:string]: Retriever<T, OP>}
+  retrievers: {[key in keyof Map]?: Retriever<Map[key], OP>};
   subscriptions: Subscription[]
   pagers: {[name: string]: Pager}
 
-  constructor(props:ContainerProps<T, OP>) {
+  constructor(props:ContainerProps<Map, OP>) {
     super(props);
 
     this.resolvedData = {};
@@ -496,10 +496,10 @@ class Container<T, OP> extends Component<ContainerProps<T, OP>, ContainerState> 
   }
 
   destroy() {
-    Object.keys(this.retrievers).forEach((key) => {
-      this.retrievers[key].onDestroy();
+    for(const key in this.retrievers) {
+      this.retrievers[key]!.onDestroy();
       delete this.retrievers[key];
-    });
+    }
   }
 
   componentWillMount() {
@@ -507,7 +507,7 @@ class Container<T, OP> extends Component<ContainerProps<T, OP>, ContainerState> 
     this.trigger();
   }
 
-  componentWillReceiveProps(newProps:ContainerProps<T, OP>) {
+  componentWillReceiveProps(newProps:ContainerProps<Map, OP>) {
     this.destroy();
     this.setupRetrievers(newProps);
     this.trigger();
@@ -517,12 +517,12 @@ class Container<T, OP> extends Component<ContainerProps<T, OP>, ContainerState> 
     this.destroy();
   }
 
-  addResolvedData(field:string, data:T) {
+  addResolvedData<K extends keyof Map,D extends Map[K]>(field:keyof Map, data:D) {
     this.resolvedData[field] = data;
     if (this.resolvedDataTargetSize === Object.keys(this.resolvedData).length) {
       this.setState({
         pending: false,
-        resolvedProps: { ...this.resolvedData },
+        resolvedProps: { ...this.resolvedData as any },
         error: null
       });
     }
@@ -532,18 +532,23 @@ class Container<T, OP> extends Component<ContainerProps<T, OP>, ContainerState> 
     this.setState({ pending: false, error });
   }
 
-  setupRetrievers(props:ContainerProps<T, OP>) {
-    const { resolve = {}, observe = {}, poll = {}, paginate = {}, originalProps } = props;
-    const resolveKeys = Object.keys(resolve);
+  setupRetrievers(props:ContainerProps<Map, OP>) {
+    const paginate = props.paginate || {}
+    const resolve = props.resolve || {}
+    const observe = props.observe || {}
+    const poll    = props.poll || {} 
+    const originalProps = props.originalProps
+
     const observeKeys = Object.keys(observe);
     const pollKeys = Object.keys(poll);
 
     const getProps = () => originalProps;
-    const publishData = (key:string) => (data:T) => this.addResolvedData(key, data);
-    const publishError = (key:string) => (err:Error) => this.setError(key, err);
+    const publishData = <K extends keyof Map, D extends Map[K]>(key:K) => (data:D) => this.addResolvedData(key, data);
+    const publishError = (key:keyof Map) => (err:Error) => this.setError(key, err);
 
-    resolveKeys.forEach((key) => {
+    for (const key in resolve) {
       const pagerConfig = paginate[key];
+      type T = Map[typeof key]
       if (pagerConfig && isInfiniteOffsetAndLimitPager(pagerConfig)) {
         this.retrievers[key] = new PaginatedInfiniteOffsetAndLimitResolveRetriever<T, OP>({
           name: key,
@@ -571,7 +576,7 @@ class Container<T, OP> extends Component<ContainerProps<T, OP>, ContainerState> 
           getter: resolve[key],
         })
       }
-    });
+    };
 
     observeKeys.forEach((key) => {
       const pagerConfig = paginate[key];
