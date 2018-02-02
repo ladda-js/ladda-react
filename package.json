@@ -4,12 +4,15 @@
   "description": "React bindings for Ladda",
   "main": "dist/bundle.js",
   "module": "dist/module.js",
-  "files": ["dist/module.js"],
+  "files": [
+    "dist/module.js"
+  ],
   "dependencies": {},
   "peerDependencies": {
     "react": "^15.6.0"
   },
   "devDependencies": {
+    "@types/react": "^16.0.36",
     "babel-core": "^6.9.0",
     "babel-plugin-external-helpers": "^6.22.0",
     "babel-plugin-istanbul": "^4.0.0",
@@ -31,7 +34,8 @@
     "rollup": "^0.53.0",
     "rollup-plugin-babel": "^3.0.3",
     "sinon": "^1.17.7",
-    "sinon-chai": "^2.8.0"
+    "sinon-chai": "^2.8.0",
+    "typescript": "^2.7.1"
   },
   "scripts": {
     "test": "env NODE_PATH=$NODE_PATH:$PWD/src NODE_ENV=test ./node_modules/.bin/mocha --compilers js:babel-register --reporter spec 'src/**/*.spec.js' --require mocha.config",
