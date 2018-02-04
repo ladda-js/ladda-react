@@ -26,13 +26,14 @@ interface PagerConfig {
 type PaginationType = "offsetAndLimit" | "cursor"
 type PaginationMode = "infinite"
 
-interface PagerConfigCursor<R> extends PagerConfig {
+interface PagerConfigCursor<T> extends PagerConfig {
   startingCursor: Cursor
-  getCursor(response:R):Cursor
-  reduceResults(mem:R, r:R):R
+  getCursor(response:Response<T>):Cursor
+  reduceResults(mem:Response<T>, r:Response<T>):Response<T>
 }
 
-interface Response<T> extends Array<T>{
+interface Response<T> extends Reducible{
+  results: T[]
   cursor:Cursor
 }
 
@@ -68,12 +69,12 @@ const PAGINATION = {
         return { offset: offset + limit, limit: nextSize };
       }
     }),
-    infiniteCursor: <T>(startingCursor:Cursor):PagerConfigCursor<Response<T>> => ({
+    infiniteCursor: <T>(startingCursor:Cursor):PagerConfigCursor<T> => ({
       type: PAGINATION.TYPE.CURSOR as 'cursor',
       mode: PAGINATION.MODE.INFINITE as 'infinite',
       startingCursor,
       getCursor: (r) => r.cursor,
-      reduceResults: (mem, l) => [...mem, ...l] as Response<T> // TODO we're losing the cursor in the result 
+      reduceResults: (mem, r) => ({ ...mem, results: mem.results.concat(r.results), cursor: r.cursor }),
     })
   }
 };
@@ -216,22 +217,26 @@ interface PaginateNext<T> {
   hasNext: boolean
 }
 
-const mergePaginateProps = <T, OP>(props:ContainerProps<T, OP>, name:string, pagerConfig:PagerConfig):ContainerProps<T, OP> => ({
+interface Reducible {
+  reduce(mem:this, e:this):this
+}
+
+const mergePaginateProps = <Map, OP>(props:ContainerProps<Map, OP>, name:keyof Map, pagerConfig:PagerConfig):ContainerProps<Map, OP> => ({
   ...props,
   paginate: {
-    ...props.paginate,
+    ...props.paginate as any,
     [name]: pagerConfig
   }
 });
 
 interface PaginatedInfiniteCursorRetrieverConfig<T, OP> extends RetrieverConfig<T[], OP> {
-  pagerConfig: PagerConfigCursor<Response<T>>
+  pagerConfig: PagerConfigCursor<T>
   getter: (props:OP, cursor: Cursor|null) => Promise<Response<T>>
 }
 
-class PaginatedInfiniteCursorRetriever<T, OP> extends Retriever<T[], OP> {
+class PaginatedInfiniteCursorRetriever<T extends Reducible, OP> extends Retriever<T[], OP> {
   type = 'resolve with cursor'
-  pagerConfig: PagerConfigCursor<Response<T>>
+  pagerConfig: PagerConfigCursor<T>
   pastCursors: Cursor[] = []
   nextCursor: Cursor
   hasNext: boolean = true
@@ -264,7 +269,7 @@ class PaginatedInfiniteCursorRetriever<T, OP> extends Retriever<T[], OP> {
 
         return response;
       })
-    ]).then((results) => this.publishData(results.reduce(this.pagerConfig.reduceResults)));
+    ]).then((results) => this.publishData(results.reduce(this.pagerConfig.reduceResults).results));
 
     this.pending.catch((err) => {
       this.pending = null;
@@ -274,7 +279,7 @@ class PaginatedInfiniteCursorRetriever<T, OP> extends Retriever<T[], OP> {
     return this.pending;
   }
 
-  mergeProps(props:ContainerProps<T, OP>) {
+  mergeProps<Map>(props:ContainerProps<Map, OP>) {
     const pagerConfig = {
       getNext: () => this.get(),
       hasNext: this.hasNext
@@ -304,7 +309,7 @@ class PaginatedInfiniteOffsetAndLimitResolveRetriever<T, OP> extends Retriever<T
   get() {
     const props = this.getProps();
     return Promise.all(this.pagers.map((pager) => this.getter(props, pager))).then(
-      (lists) => this.publishData(lists.reduce((mem, list) => [...mem, ...list], [])),
+      (lists) => this.publishData(lists.reduce((mem, list) => [...mem, ...list])),
       (err) => Promise.reject(err)
     );
   }
@@ -315,7 +320,7 @@ class PaginatedInfiniteOffsetAndLimitResolveRetriever<T, OP> extends Retriever<T
     this.pagers.push(nextPager);
   }
 
-  mergeProps(props:ContainerProps<T, OP>) {
+  mergeProps<Map>(props:ContainerProps<Map, OP>) {
     const pagerConfig = {
       getNext: () => {
         this.queueNext();
@@ -330,20 +335,20 @@ interface PagerSubscription<T> {
   subscription: null|Subscription
   firstLoad?: boolean
   pager: Pager
-  data: null | T[]
+  data: null | T
   error: null | Error
 }
 
 interface PaginatedInfiniteOffsetAndLimitObserveRetrieverConfig<T, OP> extends RetrieverConfig<T[], OP> {
   pagerConfig: PagerConfigOffset<T>
-  getter: (props:OP, pager:Pager)=>Observable<T[]>
+  getter: (props:OP, pager:Pager)=>Observable<T>
 }
 
 class PaginatedInfiniteOffsetAndLimitObserveRetriever<T, OP> extends Retriever<T[], OP> {
   type = 'observe paginated'
   pagerConfig: PagerConfigOffset<T>
   pagerSubscriptions: PagerSubscription<T>[] = []
-  getter: (props:OP, pager:Pager)=>Observable<T[]>
+  getter: (props:OP, pager:Pager)=>Observable<T>
 
   constructor(args:PaginatedInfiniteOffsetAndLimitObserveRetrieverConfig<T, OP>) {
     super(args);
@@ -403,7 +408,7 @@ class PaginatedInfiniteOffsetAndLimitObserveRetriever<T, OP> extends Retriever<T
     this.publishData(result);
   }
 
-  mergeProps(props:ContainerProps<T, OP>) {
+  mergeProps<Map>(props:ContainerProps<Map, OP>) {
     const pagerConfig = {
       getNext: () => {
         this.queueNext();
