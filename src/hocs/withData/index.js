@@ -332,6 +332,8 @@ class Container extends Component {
     this.subscriptions = [];
     this.pagers = {};
 
+    this.isUnmounting = false;
+
     this.state = {
       pending: false,
       error: null,
@@ -358,11 +360,15 @@ class Container extends Component {
   }
 
   componentWillUnmount() {
+    this.isUnmounting = true;
     this.destroy();
   }
 
   addResolvedData(field, data) {
     this.resolvedData[field] = data;
+    if (this.isUnmounting) {
+      return;
+    }
     if (this.resolvedDataTargetSize === Object.keys(this.resolvedData).length) {
       this.setState({
         pending: false,
