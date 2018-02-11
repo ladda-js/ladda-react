@@ -352,6 +352,10 @@ class Container extends Component {
   }
 
   componentWillReceiveProps(newProps) {
+    const { shouldRefetch = (() => true) } = newProps;
+    if (!shouldRefetch(this.props.originalProps, newProps.originalProps)) {
+      return;
+    }
     this.destroy();
     this.setupRetrievers(newProps);
     this.trigger();
