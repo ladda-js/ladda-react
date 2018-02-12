@@ -7,7 +7,7 @@
   "files": ["dist/module.js"],
   "dependencies": {},
   "peerDependencies": {
-    "react": "^16.0.0"
+    "react": "^15.6.0 || ^16.0.0"
   },
   "devDependencies": {
     "babel-core": "^6.9.0",
