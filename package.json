@@ -1,6 +1,6 @@
 {
   "name": "ladda-react",
-  "version": "0.2.13",
+  "version": "0.2.14",
   "description": "React bindings for Ladda",
   "main": "dist/bundle.js",
   "module": "dist/module.js",
