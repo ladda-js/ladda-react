@@ -316,5 +316,42 @@ describe('withData', () => {
       });
     });
   });
+
+  describe('shouldRefetch', () => {
+    it('does not trigger callbacks when returning false for new props', () => {
+      const spy = createSpyComponent();
+      const spyResolve = sinon.stub().returns(Promise.resolve({}));
+
+      const comp = withData({
+        resolve: {
+          user: ({ userId }) => spyResolve(userId)
+        },
+        shouldRefetch: (props, nextProps) => {
+          return props.userId === 'robin' && nextProps.userId === 'gernot';
+        }
+      })(spy);
+
+      let stateContainer = null;
+
+      render(comp, { userId: 'peter' }, c => { stateContainer = c; });
+
+      return delay().then(() => {
+        expect(spy).to.have.been.calledOnce;
+        expect(spyResolve).to.have.been.calledOnce;
+
+        stateContainer.setState({ userId: 'robin' });
+        return delay().then(() => {
+          expect(spyResolve).to.have.been.calledOnce;
+          expect(spy).to.have.been.calledTwice;
+
+          stateContainer.setState({ userId: 'gernot' });
+          return delay().then(() => {
+            expect(spyResolve).to.have.been.calledTwice;
+            expect(spy).to.have.been.calledThrice;
+          });
+        });
+      });
+    });
+  });
 });
 
