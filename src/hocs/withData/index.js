@@ -368,13 +368,16 @@ class Container extends Component {
     this.destroy();
   }
 
+  safeSetState(...args) {
+    if (!this.isUnmounting) {
+      this.setState(...args);
+    }
+  }
+
   addResolvedData(field, data) {
     this.resolvedData[field] = data;
-    if (this.isUnmounting) {
-      return;
-    }
     if (this.resolvedDataTargetSize === Object.keys(this.resolvedData).length) {
-      this.setState({
+      this.safeSetState({
         pending: false,
         resolvedProps: { ...this.resolvedData },
         error: null
@@ -383,7 +386,7 @@ class Container extends Component {
   }
 
   setError(field, error) {
-    this.setState({ pending: false, error });
+    this.safeSetState({ pending: false, error });
   }
 
   setupRetrievers(props) {
@@ -439,7 +442,7 @@ class Container extends Component {
   }
 
   trigger() {
-    this.setState({ pending: true, error: null });
+    this.safeSetState({ pending: true, error: null });
 
     Object.keys(this.retrievers).forEach((key) => {
       this.retrievers[key].get();
