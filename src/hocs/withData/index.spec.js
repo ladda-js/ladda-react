@@ -1,5 +1,5 @@
 /* eslint-disable no-unused-expressions */
-import { createElement } from 'react';
+import { Component, createElement } from 'react';
 import ReactTestUtils from 'react-dom/test-utils'; // ES6
 import { build } from 'ladda-cache';
 import { observable } from 'ladda-observable';
@@ -73,9 +73,19 @@ const createSpyComponent = () => {
   return sinon.stub().returns(null);
 };
 
-const render = (component, props) => {
-  const el = createElement(component, props);
-  return ReactTestUtils.renderIntoDocument(el);
+class StateContainer extends Component {
+  constructor(props) {
+    super(props);
+    this.state = props.componentProps;
+  }
+  render() {
+    return createElement(this.props.component, { ...this.state });
+  }
+}
+
+const render = (component, componentProps, ref) => {
+  const c = () => createElement(StateContainer, { ref, component, componentProps });
+  return ReactTestUtils.renderIntoDocument(createElement(c));
 };
 
 describe('withData', () => {
@@ -300,6 +310,43 @@ describe('withData', () => {
         return delay(10).then(() => {
           expect(spy).to.have.been.calledTwice;
           return delay(10).then(() => {
+            expect(spy).to.have.been.calledThrice;
+          });
+        });
+      });
+    });
+  });
+
+  describe('shouldRefetch', () => {
+    it('does not trigger callbacks when returning false for new props', () => {
+      const spy = createSpyComponent();
+      const spyResolve = sinon.stub().returns(Promise.resolve({}));
+
+      const comp = withData({
+        resolve: {
+          user: ({ userId }) => spyResolve(userId)
+        },
+        shouldRefetch: (props, nextProps) => {
+          return props.userId === 'robin' && nextProps.userId === 'gernot';
+        }
+      })(spy);
+
+      let stateContainer = null;
+
+      render(comp, { userId: 'peter' }, c => { stateContainer = c; });
+
+      return delay().then(() => {
+        expect(spy).to.have.been.calledOnce;
+        expect(spyResolve).to.have.been.calledOnce;
+
+        stateContainer.setState({ userId: 'robin' });
+        return delay().then(() => {
+          expect(spyResolve).to.have.been.calledOnce;
+          expect(spy).to.have.been.calledTwice;
+
+          stateContainer.setState({ userId: 'gernot' });
+          return delay().then(() => {
+            expect(spyResolve).to.have.been.calledTwice;
             expect(spy).to.have.been.calledThrice;
           });
         });

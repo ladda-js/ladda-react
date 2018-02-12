@@ -332,6 +332,8 @@ class Container extends Component {
     this.subscriptions = [];
     this.pagers = {};
 
+    this.isUnmounting = false;
+
     this.state = {
       pending: false,
       error: null,
@@ -352,19 +354,30 @@ class Container extends Component {
   }
 
   componentWillReceiveProps(newProps) {
+    const { shouldRefetch = (() => true) } = newProps;
+    if (!shouldRefetch(this.props.originalProps, newProps.originalProps)) {
+      return;
+    }
     this.destroy();
     this.setupRetrievers(newProps);
     this.trigger();
   }
 
   componentWillUnmount() {
+    this.isUnmounting = true;
     this.destroy();
+  }
+
+  safeSetState(...args) {
+    if (!this.isUnmounting) {
+      this.setState(...args);
+    }
   }
 
   addResolvedData(field, data) {
     this.resolvedData[field] = data;
     if (this.resolvedDataTargetSize === Object.keys(this.resolvedData).length) {
-      this.setState({
+      this.safeSetState({
         pending: false,
         resolvedProps: { ...this.resolvedData },
         error: null
@@ -373,7 +386,7 @@ class Container extends Component {
   }
 
   setError(field, error) {
-    this.setState({ pending: false, error });
+    this.safeSetState({ pending: false, error });
   }
 
   setupRetrievers(props) {
@@ -429,7 +442,7 @@ class Container extends Component {
   }
 
   trigger() {
-    this.setState({ pending: true, error: null });
+    this.safeSetState({ pending: true, error: null });
 
     Object.keys(this.retrievers).forEach((key) => {
       this.retrievers[key].get();
