@@ -74,8 +74,12 @@ const createSpyComponent = () => {
 };
 
 class StateContainer extends Component {
+  constructor(props) {
+    super(props);
+    this.state = props.componentProps;
+  }
   render() {
-    return createElement(this.props.component, { ...this.props.componentProps, ...this.state });
+    return createElement(this.props.component, { ...this.state });
   }
 }
 
