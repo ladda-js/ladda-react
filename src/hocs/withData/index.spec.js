@@ -1,5 +1,5 @@
 /* eslint-disable no-unused-expressions */
-import { createElement } from 'react';
+import { Component, createElement } from 'react';
 import ReactTestUtils from 'react-dom/test-utils'; // ES6
 import { build } from 'ladda-cache';
 import { observable } from 'ladda-observable';
@@ -73,9 +73,15 @@ const createSpyComponent = () => {
   return sinon.stub().returns(null);
 };
 
-const render = (component, props) => {
-  const el = createElement(component, props);
-  return ReactTestUtils.renderIntoDocument(el);
+class StateContainer extends Component {
+  render() {
+    return createElement(this.props.component, { ...this.props.componentProps, ...this.state });
+  }
+}
+
+const render = (component, componentProps, ref) => {
+  const c = () => createElement(StateContainer, { ref, component, componentProps });
+  return ReactTestUtils.renderIntoDocument(createElement(c));
 };
 
 describe('withData', () => {
