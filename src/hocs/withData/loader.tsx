@@ -13,42 +13,42 @@ import Response from '../../retrievers/Response'
 
 type InjectedResults<TypeMap> = {[key in keyof TypeMap]:TypeMap[key]}
 
-interface ResolveConfig<T> {
+export interface ResolveConfig<T> {
     resolve: () => Promise<T>
 }
 
-interface ObserveConfig<T> {
+export interface ObserveConfig<T> {
     observe: () => Observable<T>
 }
 
-interface PollConfig<T> {
+export interface PollConfig<T> {
     poll: () => Promise<T>
     interval: number
 }
 
-interface ResolvePageConfig<T> {
+export interface ResolvePageConfig<T> {
     resolvePage: (page: Page) => Promise<T>
     getNextPage: (page?: Page) => Page
 }
 
-interface ObservePageConfig<T> {
+export interface ObservePageConfig<T> {
     observePage: (page: Page) => Observable<T>
     getNextPage: (page?: Page) => Page
 }
 
-interface CursorConfig<T> {
+export interface CursorConfig<T> {
     resolveCursor: (cursor: Cursor) => Promise<Response<T>>
     startingCursor: Cursor
 }
 
-type Config<T> = ResolveConfig<T>
+export type Config<T> = ResolveConfig<T>
                | ObserveConfig<T>
                | PollConfig<T>
                | ResolvePageConfig<T>
                | ObservePageConfig<T>
                | CursorConfig<T>
 
-type ConfigMap<TypeMap> = {
+export type ConfigMap<TypeMap> = {
     [name in keyof TypeMap]: Config<TypeMap[name]>
 }
 
@@ -63,6 +63,8 @@ interface State<TypeMap> {
     error?: Error|null
 }
 
+export type RenderProps<TypeMap> = State<TypeMap>
+
 export default class Loader<TypeMap> extends React.PureComponent<Props<TypeMap>, State<TypeMap>> {
     private retrievers:{[key in keyof TypeMap]?: Retriever<TypeMap[key]>} = {}
     state:State<TypeMap> = {
@@ -72,6 +74,10 @@ export default class Loader<TypeMap> extends React.PureComponent<Props<TypeMap>,
 
     render() {
         return this.props.children(this.state);
+    }
+
+    static of<T>(): new()=>Loader<T> {
+        return Loader as any
     }
 
     private setupRetrievers(props:Props<TypeMap>) {
