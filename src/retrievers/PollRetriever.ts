@@ -1,10 +1,10 @@
-import Retriever, {Config as BaseConfig} from './ResolveRetriever'
+import ResolveRetriever, {Config as BaseConfig} from './ResolveRetriever'
 
 export interface Config<T> extends BaseConfig<T> {
     interval: number
 }
 
-export default class PollRetriever<T> extends Retriever<T> {
+export default class PollRetriever<T> extends ResolveRetriever<T> {
     constructor(config: Config<T>) {
         super(config)
         this.interval = setInterval(() => this.get(), config.interval)

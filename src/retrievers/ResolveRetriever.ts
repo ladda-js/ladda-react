@@ -12,15 +12,8 @@ export default class ResolveRetriever<T> extends Retriever<T> {
 
     protected getter:Config<T>['getter']
 
-    async get() {
-        try {
-            const data = await this.getter()
-            this.onData(data)
-            return data
-        } catch (e) {
-            this.onError(e)    
-            throw e
-        }
+    get() {
+        this.getter().then(this.onData, this.onError)
     }
 
     destroy() {

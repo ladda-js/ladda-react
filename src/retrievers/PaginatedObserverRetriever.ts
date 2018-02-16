@@ -45,7 +45,7 @@ export default class PaginatedObserveRetriever<T> extends Retriever<T[]> {
 
     get() {
         this.queueNext()
-        return this.getJoinedResults()
+        this.getJoinedResults()
     }
 
     isLoading() {

@@ -16,22 +16,22 @@ export default class CursorRetriever<T> extends Retriever<T[]> {
 
     protected nextCursor?:Cursor
     protected pastCursors:Cursor[] = []
-    protected pending?:Promise<T[]>
+    protected pending?:Promise<void>
     protected getter: (cursor:Cursor) => Promise<Response<T>>
 
-    async get():Promise<T[]> {
+    get() {
         if (this.pending) {
-            return this.pending
+            return
         } 
         
         if (this.nextCursor) {
             this.pending = Promise.all([
                 ...this.pastCursors.map(this.getter),
-                this.getter(this.nextCursor).then(result => {
-                    this.pastCursors = [...this.pastCursors, this.nextCursor!]
-                    this.nextCursor = result.cursor
-                    this.pending = undefined
-                    return result
+                this.getter(this.nextCursor).then(response => {
+                    if (!this.nextCursor) throw new Error('nextCursor should not be null, because we just retrieved it')
+                    this.pastCursors = [...this.pastCursors, this.nextCursor]
+                    this.nextCursor = response.cursor
+                    return response
                 })
             ])
             .then(
@@ -39,22 +39,20 @@ export default class CursorRetriever<T> extends Retriever<T[]> {
                     const results = responses.reduce<T[]>((acc, {results})=>(
                         [...acc, ...results]
                     ), [])
+                    this.pending = undefined
                     this.onData(results)
-                    return results
                 },
                 (err) => {
                     this.pending = undefined
-                    throw err
+                    this.onError(err)
                 }
             )
-            return this.pending
-        } else {
-            return []
         }
     }
 
     destroy(){
         this.pending = undefined
+        this.pastCursors = []
     }
 
 }

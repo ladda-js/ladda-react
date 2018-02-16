@@ -12,7 +12,7 @@ export default class ObservableRetriever<T> extends Retriever<T> {
     }
 
     protected getter: () => Observable<T>
-    protected subscription: Subscription | null
+    protected subscription!: Subscription | null
 
 
     get() {

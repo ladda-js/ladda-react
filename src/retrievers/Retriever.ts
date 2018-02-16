@@ -11,6 +11,7 @@ export default abstract class Retriever<T> {
 
     abstract destroy():void
 
+    abstract get():void
 
     protected onData: (data:T) => void
 

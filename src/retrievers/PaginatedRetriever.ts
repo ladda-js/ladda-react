@@ -18,16 +18,19 @@ export default class PaginatedRetriever<T> extends Retriever<T[]> {
     protected getNextPage: (currentPage?:Page) => Page
     protected pages: Page[] = []
 
-    async get() {
+    get() {
         this.queueNext()
-        return this.getJoinedResults()
+        this.getJoinedResults()
     }
 
     protected async getJoinedResults() {
-        const results = await Promise.all(this.pages.map(this.getter))
-        const joinedResults:T[] = Array.prototype.concat(...results)
-        this.onData(joinedResults)
-        return joinedResults
+        try {
+            const results = await Promise.all(this.pages.map(this.getter))
+            const joinedResults:T[] = Array.prototype.concat(...results)
+            this.onData(joinedResults)
+        } catch(e) {
+            this.onError(e)
+        }
     }
 
     protected queueNext() {
