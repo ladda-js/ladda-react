@@ -23,7 +23,7 @@ export default class ResolveRetriever<T> extends Retriever<T> {
         }
     }
 
-    onDestroy() {
+    destroy() {
         // Do nothing
     }
 }

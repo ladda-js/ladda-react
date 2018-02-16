@@ -9,7 +9,8 @@ export default abstract class Retriever<T> {
         this.onError = config.onError
     }
 
-    abstract onDestroy():void
+    abstract destroy():void
+
 
     protected onData: (data:T) => void
 

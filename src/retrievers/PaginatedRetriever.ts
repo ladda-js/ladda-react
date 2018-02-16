@@ -36,7 +36,7 @@ export default class PaginatedRetriever<T> extends Retriever<T[]> {
         this.pages = [...this.pages, nextPage]
     }
 
-    onDestroy() {
+    destroy() {
         // nothing to do
     }
 }

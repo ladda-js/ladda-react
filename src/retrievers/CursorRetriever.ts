@@ -53,7 +53,7 @@ export default class CursorRetriever<T> extends Retriever<T[]> {
         }
     }
 
-    onDestroy(){
+    destroy(){
         this.pending = undefined
     }
 

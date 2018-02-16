@@ -79,7 +79,7 @@ export default class PaginatedObserveRetriever<T> extends Retriever<T[]> {
         this.subscriptions = [...this.subscriptions, new PageSubscription(nextPage)]
     }
 
-    onDestroy() {
+    destroy() {
         // nothing to do
     }
 }

@@ -24,7 +24,7 @@ export default class ObservableRetriever<T> extends Retriever<T> {
         this.subscription = observable.subscribe(this.onData, this.onError);
     }
 
-    onDestroy() {
+    destroy() {
         if (this.subscription) {
             this.subscription.unsubscribe();
             this.subscription = null
