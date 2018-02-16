@@ -2,12 +2,12 @@ import Retriever, {Config as BaseConfig} from './Retriever'
 import Cursor from './Cursor'
 import Response from './Response'
 
-interface Config<T> extends BaseConfig<T[]> {
+interface Config<T extends any[]> extends BaseConfig<T> {
     getter(cursor:Cursor):Promise<Response<T>>
     startingCursor: Cursor
 }
 
-export default class CursorRetriever<T> extends Retriever<T[]> {
+export default class CursorRetriever<T extends any[]> extends Retriever<T> {
     constructor(config:Config<T>) {
         super(config)
         this.getter = config.getter
@@ -36,11 +36,11 @@ export default class CursorRetriever<T> extends Retriever<T[]> {
             ])
             .then(
                 responses => {
-                    const results = responses.reduce<T[]>((acc, {results})=>(
+                    const results:any[] = responses.reduce<any[]>((acc, {results})=>(
                         [...acc, ...results]
                     ), [])
                     this.pending = undefined
-                    this.onData(results)
+                    this.onData(<T>results)
                 },
                 (err) => {
                     this.pending = undefined

@@ -2,12 +2,12 @@ import Retriever, {Config as BaseConfig} from './Retriever'
 import Observable, { Subscription } from './Observable';
 import Page from './Page';
 
-interface Config<T> extends BaseConfig<T[]> {
-    getter: (pager:Page) => Observable<T[]>
+interface Config<T> extends BaseConfig<T> {
+    getter: (pager:Page) => Observable<T>
     getNextPage: (currentPage?:Page) => Page
 }
 
-class PageSubscription<T> {
+class PageSubscription<T extends any[]> {
     constructor(page:Page) {
         this.page = page
     }
@@ -31,7 +31,7 @@ class PageSubscription<T> {
     }
 }
 
-export default class PaginatedObserveRetriever<T> extends Retriever<T[]> {
+export default class PaginatedObserveRetriever<T extends any[]> extends Retriever<T> {
     constructor(config:Config<T>) {
         super(config)
         this.getter = config.getter
@@ -39,9 +39,9 @@ export default class PaginatedObserveRetriever<T> extends Retriever<T[]> {
         this.queueNext()
     }
 
-    protected getter: (pager:Page) => Observable<T[]>
+    protected getter: (pager:Page) => Observable<T>
     protected getNextPage: (currentPage?:Page) => Page
-    protected subscriptions: PageSubscription<T[]>[] = []
+    protected subscriptions: PageSubscription<T>[] = []
 
     get() {
         this.queueNext()
@@ -64,11 +64,11 @@ export default class PaginatedObserveRetriever<T> extends Retriever<T[]> {
     }
 
     protected tryToPublish() {
-        const result = this.subscriptions.reduce<T[]|null>(
+        const result:any[]|null = this.subscriptions.reduce<any[]|null>(
             (acc, page)=> acc && page.data ? acc.concat(page.data) : null,
             [])
         if (result) {
-            this.onData(result)
+            this.onData(<T>result)
         }
     }
 

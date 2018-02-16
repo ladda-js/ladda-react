@@ -1,12 +1,12 @@
 import Retriever, {Config as BaseConfig} from './Retriever'
 import Page from './Page'
 
-interface Config<T> extends BaseConfig<T[]> {
-    getter: (pager:Page) => Promise<T[]>
+interface Config<T> extends BaseConfig<T> {
+    getter: (pager:Page) => Promise<T>
     getNextPage: (currentPage?:Page) => Page
 }
 
-export default class PaginatedRetriever<T> extends Retriever<T[]> {
+export default class PaginatedRetriever<T extends any[]> extends Retriever<T> {
     constructor(config:Config<T>) {
         super(config)
         this.getter = config.getter
@@ -14,7 +14,7 @@ export default class PaginatedRetriever<T> extends Retriever<T[]> {
         this.queueNext()
     }
 
-    protected getter: (pager:Page) => Promise<T[]>
+    protected getter: (pager:Page) => Promise<T>
     protected getNextPage: (currentPage?:Page) => Page
     protected pages: Page[] = []
 
@@ -26,7 +26,7 @@ export default class PaginatedRetriever<T> extends Retriever<T[]> {
     protected async getJoinedResults() {
         try {
             const results = await Promise.all(this.pages.map(this.getter))
-            const joinedResults:T[] = Array.prototype.concat(...results)
+            const joinedResults:T = <T>Array.prototype.concat(...results)
             this.onData(joinedResults)
         } catch(e) {
             this.onError(e)
