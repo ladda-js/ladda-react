@@ -79,12 +79,12 @@ class StateContainer extends Component {
     this.state = props.componentProps;
   }
   render() {
-    return createElement(this.props.component, { ...this.state });
+    return createElement(this.props.component, { ...this.props.mapState(this.state) });
   }
 }
 
-const render = (component, componentProps, ref) => {
-  const c = () => createElement(StateContainer, { ref, component, componentProps });
+const render = (component, componentProps, ref, mapState = (t => t)) => {
+  const c = () => createElement(StateContainer, { ref, component, componentProps, mapState });
   return ReactTestUtils.renderIntoDocument(createElement(c));
 };
 
@@ -105,6 +105,33 @@ describe('withData', () => {
       expect(spy).to.have.been.called;
       const props = spy.args[0][0];
       expect(props.userId).to.equal('peter');
+    });
+  });
+
+  it('does not re-render when no props to it have changed', () => {
+    const api = build(createConfig());
+    const spy = createSpyComponent();
+    const comp = withData({
+      resolve: {
+        users: () => api.user.getUsers(),
+        user: ({ userId }) => api.user.getUser(userId)
+      }
+    })(spy);
+
+    let stateContainer = null;
+
+    render(comp, { userId: 'peter' }, c => { stateContainer = c; }, ({ userId }) => ({ userId }));
+
+    return delay().then(() => {
+      expect(spy).to.have.been.calledOnce;
+      stateContainer.setState({ x: 'x' });
+      return delay().then(() => {
+        expect(spy).to.have.been.calledOnce;
+        stateContainer.setState({ userId: 'gernot' });
+        return delay().then(() => {
+          expect(spy).to.have.been.calledThrice;
+        });
+      });
     });
   });
 
