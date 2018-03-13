@@ -1,4 +1,4 @@
-import { createElement, Component } from 'react';
+import { createElement, Component, PureComponent } from 'react';
 
 const PAGINATION = {
   TYPE: {
@@ -471,11 +471,13 @@ class Container extends Component {
 
 export function withData(conf) {
   return component => {
-    // make it pure again
-    return (originalProps) => {
-      const props = { ...conf, originalProps, component };
-      return createElement(Container, props);
-    };
+    class WithDataWrapper extends PureComponent {
+      render() {
+        const props = { ...conf, originalProps: this.props, component };
+        return createElement(Container, props);
+      }
+    }
+    return WithDataWrapper;
   };
 }
 
