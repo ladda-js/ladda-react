@@ -1,6 +1,6 @@
 import { createElement, Component, PureComponent } from 'react';
 
-const PAGINATION = {
+export const PAGINATION = {
   TYPE: {
     OFFSET_AND_LIMIT: 'offsetAndLimit',
     CURSOR: 'cursor'
