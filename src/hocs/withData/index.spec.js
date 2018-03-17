@@ -161,6 +161,38 @@ describe('withData', () => {
     });
   });
 
+  describe('delay', () => {
+    it('does not show pending state immediately when delay is requested', () => {
+      const api = build(createConfig());
+      const spy = createSpyComponent();
+      const pendingSpy = createSpyComponent();
+      const comp = withData({
+        resolve: {
+          user: ({ userId }) => api.user.getUser(userId)
+        },
+        pendingComponent: pendingSpy,
+        delays: {
+          refetch: 100
+        }
+      })(spy);
+
+      let stateContainer = null;
+
+      // prefill the cache
+      render(comp, { userId: 'peter' }, c => { stateContainer = c; }, ({ userId }) => ({ userId }));
+
+      return delay().then(() => {
+        expect(spy).to.have.been.calledOnce;
+        expect(pendingSpy).to.have.been.calledOne;
+        stateContainer.setState({ userId: 'gernot' });
+        return delay().then(() => {
+          expect(pendingSpy).to.have.been.calledOnce;
+          expect(spy).to.have.been.calledThrice;
+        });
+      });
+    });
+  });
+
   describe('pagination', () => {
     it('allows to paginate with limit and offset (resolve)', () => {
       const api = build(createConfig(), [observable()]);

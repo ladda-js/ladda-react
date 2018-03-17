@@ -6,12 +6,16 @@ import {
   PAGINATION
 } from './retrievers';
 
+const incrementVersion = version => (version > 99 ? 0 : version + 1);
+
 class Container extends Component {
   constructor(props) {
     super(props);
 
     this.resolvedData = {};
     this.resolvedDataTargetSize = 0;
+
+    this.pendingTimeout = null;
 
     this.retrievers = {};
 
@@ -23,7 +27,8 @@ class Container extends Component {
     this.state = {
       pending: false,
       error: null,
-      resolvedProps: null
+      resolvedProps: null,
+      version: 0
     };
   }
 
@@ -36,7 +41,7 @@ class Container extends Component {
 
   componentWillMount() {
     this.setupRetrievers(this.props);
-    this.trigger();
+    this.trigger({});
   }
 
   componentWillReceiveProps(newProps) {
@@ -46,7 +51,7 @@ class Container extends Component {
     }
     this.destroy();
     this.setupRetrievers(newProps);
-    this.trigger();
+    this.trigger(newProps.delays);
   }
 
   componentWillUnmount() {
@@ -63,16 +68,30 @@ class Container extends Component {
   addResolvedData(field, data) {
     this.resolvedData[field] = data;
     if (this.resolvedDataTargetSize === Object.keys(this.resolvedData).length) {
-      this.safeSetState({
+      this.clearPendingTimeout();
+      this.safeSetState(prevState => ({
         pending: false,
         resolvedProps: { ...this.resolvedData },
-        error: null
-      });
+        error: null,
+        version: incrementVersion(prevState.version)
+      }));
     }
   }
 
   setError(field, error) {
-    this.safeSetState({ pending: false, error });
+    this.clearPendingTimeout();
+    this.safeSetState(prevState => ({
+      pending: false,
+      error,
+      version: incrementVersion(prevState.version)
+    }));
+  }
+
+  clearPendingTimeout() {
+    if (this.pendingTimeout) {
+      clearTimeout(this.pendingTimeout);
+      this.pendingTimeout = null;
+    }
   }
 
   setupRetrievers(props) {
@@ -127,8 +146,18 @@ class Container extends Component {
     this.resolvedDataTargetSize = resolveKeys.length + observeKeys.length + pollKeys.length;
   }
 
-  trigger() {
-    this.safeSetState({ pending: true, error: null });
+  trigger(delays) {
+    const update = () => this.safeSetState({ pending: true, error: null });
+    if (delays.refetch) {
+      this.pendingTimeout = setTimeout(() => {
+        if (this.pendingTimeout) {
+          update();
+          this.pendingTimeout = null;
+        }
+      }, delays.refetch);
+    } else {
+      update();
+    }
 
     Object.keys(this.retrievers).forEach((key) => {
       this.retrievers[key].get();
@@ -155,17 +184,31 @@ class Container extends Component {
   }
 }
 
+const DEFAULT_DELAYS = {
+  refetch: 0
+};
+
 export function withData(conf) {
   return component => {
     class WithDataWrapper extends PureComponent {
       render() {
-        const props = { ...conf, originalProps: this.props, component };
+        const props = {
+          ...conf,
+          delays: conf.delays || DEFAULT_DELAYS,
+          originalProps: this.props,
+          component
+        };
         return createElement(Container, props);
       }
     }
     return WithDataWrapper;
   };
 }
+
+// wait with refetch spinner
+// wait with initial spinner
+//
+// minimum time for spinner
 
 withData.PAGINATION = PAGINATION;
 
