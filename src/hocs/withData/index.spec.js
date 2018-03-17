@@ -213,8 +213,8 @@ describe('withData', () => {
   describe('delay', () => {
     it('does not show pending state immediately when delay is requested', () => {
       const api = build(createConfig());
-      const { spy } = createSpyComponent();
-      const pendingSpy = createSpyComponent();
+      const { spy, logger } = createSpyComponent();
+      const { spy: pendingSpy, logger: pendingLogger } = createSpyComponent();
       const comp = withData({
         resolve: {
           user: ({ userId }) => api.user.getUser(userId)
@@ -231,12 +231,12 @@ describe('withData', () => {
       render(comp, { userId: 'peter' }, c => { stateContainer = c; }, ({ userId }) => ({ userId }));
 
       return delay().then(() => {
-        expect(spy).to.have.been.calledOnce;
-        expect(pendingSpy).to.have.been.calledOne;
+        pendingLogger.expectRenderCount(1);
+        logger.expectRenderCount(1);
         stateContainer.setState({ userId: 'gernot' });
         return delay().then(() => {
-          expect(pendingSpy).to.have.been.calledOnce;
-          expect(spy).to.have.been.calledThrice;
+          pendingLogger.expectRenderCount(1);
+          logger.expectRenderCount(3);
         });
       });
     });
@@ -245,7 +245,7 @@ describe('withData', () => {
   describe('pagination', () => {
     it('allows to paginate with limit and offset (resolve)', () => {
       const api = build(createConfig(), [observable()]);
-      const { spy } = createSpyComponent();
+      const { spy, logger } = createSpyComponent();
       const comp = withData({
         resolve: {
           users: (props, { limit, offset }) => api.user.getUsersPaginated({ limit, offset })
@@ -258,14 +258,14 @@ describe('withData', () => {
       render(comp, {});
 
       return delay().then(() => {
-        expect(spy).to.have.been.called;
-        const firstProps = spy.args[0][0];
+        logger.expectRenderCount(1);
+        const { props: firstProps } = logger.getRenders()[0];
         expect(firstProps.users).to.deep.equal([peter, gernot]);
 
         return firstProps.paginate.users.getNext().then(() => {
           return delay().then(() => {
-            expect(spy).to.have.been.calledTwice;
-            const secondProps = spy.args[1][0];
+            logger.expectRenderCount(2);
+            const { props: secondProps } = logger.getRenders()[1];
             expect(secondProps.users).to.deep.equal([peter, gernot, robin]);
           });
         });
@@ -274,7 +274,7 @@ describe('withData', () => {
 
     it('allows to paginate with limit and offset (observe)', () => {
       const api = build(createConfig(), [observable()]);
-      const { spy } = createSpyComponent();
+      const { spy, logger } = createSpyComponent();
       const comp = withData({
         observe: {
           users: (props, { limit, offset }) => api.user.getUsersPaginated.createObservable({
@@ -290,18 +290,18 @@ describe('withData', () => {
       render(comp, {});
 
       return delay().then(() => {
-        expect(spy).to.have.been.called;
-        const firstProps = spy.args[0][0];
+        logger.expectRenderCount(1);
+        const { props: firstProps } = logger.getRenders()[0];
         expect(firstProps.users).to.deep.equal([peter, gernot]);
 
         return firstProps.paginate.users.getNext().then(() => {
-          expect(spy).to.have.been.calledTwice;
-          const secondProps = spy.args[1][0];
+          logger.expectRenderCount(2);
+          const { props: secondProps } = logger.getRenders()[1];
           expect(secondProps.users).to.deep.equal([peter, gernot, robin]);
 
           return api.user.updateUser({ id: 'peter', name: 'crona' }).then((nextUser) => {
             return delay().then(() => {
-              const thirdProps = spy.args[2][0];
+              const { props: thirdProps } = logger.getRenders()[2];
               expect(thirdProps.users[0]).to.deep.equal(nextUser);
             });
           });
@@ -311,7 +311,7 @@ describe('withData', () => {
 
     it('allows to paginate with a cursor', () => {
       const api = build(createConfig(), [observable()]);
-      const { spy } = createSpyComponent();
+      const { spy, logger } = createSpyComponent();
       const comp = withData({
         resolve: {
           users: (props, cursor) => api.user.getUsersWithCursor({ cursor, limit: 2 })
@@ -327,22 +327,22 @@ describe('withData', () => {
       render(comp, {});
 
       return delay().then(() => {
-        expect(spy).to.have.been.called;
-        const firstProps = spy.args[0][0];
+        logger.expectRenderCount(1);
+        const { props: firstProps } = logger.getRenders()[0];
         expect(firstProps.users.length).to.equal(2);
         expect(firstProps.users).to.contain(peter);
         expect(firstProps.users).to.contain(gernot);
 
         return firstProps.paginate.users.getNext().then(() => {
           return delay().then(() => {
-            expect(spy).to.have.been.calledTwice;
-            const secondProps = spy.args[1][0];
+            logger.expectRenderCount(2);
+            const { props: secondProps } = logger.getRenders()[1];
             expect(secondProps.users).to.deep.equal([peter, gernot, robin, paulo]);
             expect(secondProps.paginate.users.hasNext).to.be.true;
 
             return secondProps.paginate.users.getNext().then(() => {
-              expect(spy).to.have.been.calledThrice;
-              const thirdProps = spy.args[2][0];
+              logger.expectRenderCount(3);
+              const { props: thirdProps } = logger.getRenders()[2];
               expect(thirdProps.users).to.deep.equal([peter, gernot, robin, paulo, timur]);
               expect(thirdProps.paginate.users.hasNext).to.be.false;
             });
@@ -355,7 +355,7 @@ describe('withData', () => {
   describe('poll', () => {
     it('does not poll when interval is set to a falsy value', () => {
       const api = build(createConfig());
-      const { spy } = createSpyComponent();
+      const { spy, logger } = createSpyComponent();
       const comp = withData({
         poll: {
           users: {
@@ -368,16 +368,16 @@ describe('withData', () => {
       render(comp, {});
 
       return delay().then(() => {
-        expect(spy).to.have.been.calledOnce;
+        logger.expectRenderCount(1);
         return delay(10).then(() => {
-          expect(spy).to.have.been.calledOnce;
+          logger.expectRenderCount(1);
         });
       });
     });
 
     it('does not poll when interval is not defined', () => {
       const api = build(createConfig());
-      const { spy } = createSpyComponent();
+      const { spy, logger } = createSpyComponent();
       const comp = withData({
         poll: {
           users: {
@@ -389,9 +389,9 @@ describe('withData', () => {
       render(comp, {});
 
       return delay().then(() => {
-        expect(spy).to.have.been.calledOnce;
+        logger.expectRenderCount(1);
         return delay(10).then(() => {
-          expect(spy).to.have.been.calledOnce;
+          logger.expectRenderCount(1);
         });
       });
     });
@@ -401,7 +401,7 @@ describe('withData', () => {
       // to make this really robust!
 
       const api = build(createConfig());
-      const { spy } = createSpyComponent();
+      const { spy, logger } = createSpyComponent();
       const comp = withData({
         poll: {
           users: {
@@ -414,11 +414,11 @@ describe('withData', () => {
       render(comp, {});
 
       return delay().then(() => {
-        expect(spy).to.have.been.calledOnce;
+        logger.expectRenderCount(1);
         return delay(10).then(() => {
-          expect(spy).to.have.been.calledTwice;
+          logger.expectRenderCount(2);
           return delay(10).then(() => {
-            expect(spy).to.have.been.calledThrice;
+            logger.expectRenderCount(3);
           });
         });
       });
@@ -427,7 +427,7 @@ describe('withData', () => {
 
   describe('shouldRefetch', () => {
     it('does not trigger callbacks when returning false for new props', () => {
-      const { spy } = createSpyComponent();
+      const { spy, logger } = createSpyComponent();
       const spyResolve = sinon.stub().returns(Promise.resolve({}));
 
       const comp = withData({
@@ -444,18 +444,18 @@ describe('withData', () => {
       render(comp, { userId: 'peter' }, c => { stateContainer = c; });
 
       return delay().then(() => {
-        expect(spy).to.have.been.calledOnce;
+        logger.expectRenderCount(1);
         expect(spyResolve).to.have.been.calledOnce;
 
         stateContainer.setState({ userId: 'robin' });
         return delay().then(() => {
           expect(spyResolve).to.have.been.calledOnce;
-          expect(spy).to.have.been.calledTwice;
+          logger.expectRenderCount(2);
 
           stateContainer.setState({ userId: 'gernot' });
           return delay().then(() => {
             expect(spyResolve).to.have.been.calledTwice;
-            expect(spy).to.have.been.calledThrice;
+            logger.expectRenderCount(3);
           });
         });
       });
