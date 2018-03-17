@@ -15,7 +15,9 @@ class Container extends Component {
     this.resolvedData = {};
     this.resolvedDataTargetSize = 0;
 
-    this.pendingTimeout = null;
+    this.timeouts = {
+      pendingScheduled: null
+    };
 
     this.retrievers = {};
 
@@ -88,9 +90,10 @@ class Container extends Component {
   }
 
   clearPendingTimeout() {
-    if (this.pendingTimeout) {
-      clearTimeout(this.pendingTimeout);
-      this.pendingTimeout = null;
+    const { timeouts } = this;
+    if (timeouts.pendingScheduled) {
+      clearTimeout(timeouts.pendingScheduled);
+      timeouts.pendingScheduled = null;
     }
   }
 
@@ -149,10 +152,11 @@ class Container extends Component {
   trigger(delays) {
     const update = () => this.safeSetState({ pending: true, error: null });
     if (delays.refetch) {
-      this.pendingTimeout = setTimeout(() => {
-        if (this.pendingTimeout) {
+      const { timeouts } = this;
+      timeouts.pendingScheduled = setTimeout(() => {
+        if (timeouts.pendingScheduled) {
           update();
-          this.pendingTimeout = null;
+          this.clearPendingTimeout();
         }
       }, delays.refetch);
     } else {
