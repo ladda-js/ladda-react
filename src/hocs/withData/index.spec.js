@@ -69,8 +69,57 @@ const createConfig = () => {
   };
 };
 
+class Logger {
+  constructor() {
+    this.logs = [];
+  }
+
+  log(l) {
+    this.logs.push({ ...l, t: Date.now() });
+  }
+
+  getByType(t) {
+    return this.logs.filter(l => l.type === t);
+  }
+
+  getRenders() {
+    return this.getByType('render');
+  }
+
+  getCallSequence() {
+    return this.logs.map(l => l.type);
+  }
+
+  expectRenderCount(count) {
+    expect(this.getRenders().length).to.equal(count);
+  }
+}
+
 const createSpyComponent = () => {
-  return sinon.stub().returns(null);
+  const logger = new Logger();
+  const log = (type, props) => logger.log({ type, props });
+
+  class SpyComponent extends Component {
+    componentWillMount() {
+      log('componentWillMount', this.props);
+    }
+
+    componentWillUnmount() {
+      log('componentWillUnmount', this.props);
+    }
+
+    // eslint-disable-next-line class-methods-use-this
+    componentWillReceiveProps(nextProps) {
+      log('componentWillReceiveProps', nextProps);
+    }
+
+    render() {
+      log('render', this.props);
+      return null;
+    }
+  }
+
+  return { spy: SpyComponent, logger };
 };
 
 class StateContainer extends Component {
@@ -91,7 +140,7 @@ const render = (component, componentProps, ref, mapState = (t => t)) => {
 describe('withData', () => {
   it('passes the original properties down', () => {
     const api = build(createConfig());
-    const spy = createSpyComponent();
+    const { spy, logger } = createSpyComponent();
     const comp = withData({
       resolve: {
         users: () => api.user.getUsers(),
@@ -102,15 +151,15 @@ describe('withData', () => {
     render(comp, { userId: 'peter' });
 
     return delay().then(() => {
-      expect(spy).to.have.been.called;
-      const props = spy.args[0][0];
+      logger.expectRenderCount(1);
+      const { props } = logger.getRenders()[0];
       expect(props.userId).to.equal('peter');
     });
   });
 
   it('does not re-render when no props to it have changed', () => {
     const api = build(createConfig());
-    const spy = createSpyComponent();
+    const { spy, logger } = createSpyComponent();
     const comp = withData({
       resolve: {
         users: () => api.user.getUsers(),
@@ -123,13 +172,13 @@ describe('withData', () => {
     render(comp, { userId: 'peter' }, c => { stateContainer = c; }, ({ userId }) => ({ userId }));
 
     return delay().then(() => {
-      expect(spy).to.have.been.calledOnce;
+      logger.expectRenderCount(1);
       stateContainer.setState({ x: 'x' });
       return delay().then(() => {
-        expect(spy).to.have.been.calledOnce;
+        logger.expectRenderCount(1);
         stateContainer.setState({ userId: 'gernot' });
         return delay().then(() => {
-          expect(spy).to.have.been.calledThrice;
+          logger.expectRenderCount(3);
         });
       });
     });
@@ -137,7 +186,7 @@ describe('withData', () => {
 
   it('allows to observe changes', () => {
     const api = build(createConfig(), [observable()]);
-    const spy = createSpyComponent();
+    const { spy, logger } = createSpyComponent();
     const comp = withData({
       observe: {
         user: ({ userId }) => api.user.getUser.createObservable(userId)
@@ -147,14 +196,14 @@ describe('withData', () => {
     render(comp, { userId: 'peter' });
 
     return delay().then(() => {
-      expect(spy).to.have.been.calledOnce;
-      const firstProps = spy.args[0][0];
+      logger.expectRenderCount(1);
+      const { props: firstProps } = logger.getRenders()[0];
       expect(firstProps.user).to.deep.equal(peter);
 
       return api.user.updateUser({ id: 'peter', name: 'crona' }).then((nextUser) => {
         return delay().then(() => {
-          expect(spy).to.have.been.calledTwice;
-          const secondProps = spy.args[1][0];
+          logger.expectRenderCount(2);
+          const { props: secondProps } = logger.getRenders()[1];
           expect(secondProps.user).to.deep.equal(nextUser);
         });
       });
@@ -164,7 +213,7 @@ describe('withData', () => {
   describe('delay', () => {
     it('does not show pending state immediately when delay is requested', () => {
       const api = build(createConfig());
-      const spy = createSpyComponent();
+      const { spy } = createSpyComponent();
       const pendingSpy = createSpyComponent();
       const comp = withData({
         resolve: {
@@ -196,7 +245,7 @@ describe('withData', () => {
   describe('pagination', () => {
     it('allows to paginate with limit and offset (resolve)', () => {
       const api = build(createConfig(), [observable()]);
-      const spy = createSpyComponent();
+      const { spy } = createSpyComponent();
       const comp = withData({
         resolve: {
           users: (props, { limit, offset }) => api.user.getUsersPaginated({ limit, offset })
@@ -225,7 +274,7 @@ describe('withData', () => {
 
     it('allows to paginate with limit and offset (observe)', () => {
       const api = build(createConfig(), [observable()]);
-      const spy = createSpyComponent();
+      const { spy } = createSpyComponent();
       const comp = withData({
         observe: {
           users: (props, { limit, offset }) => api.user.getUsersPaginated.createObservable({
@@ -262,7 +311,7 @@ describe('withData', () => {
 
     it('allows to paginate with a cursor', () => {
       const api = build(createConfig(), [observable()]);
-      const spy = createSpyComponent();
+      const { spy } = createSpyComponent();
       const comp = withData({
         resolve: {
           users: (props, cursor) => api.user.getUsersWithCursor({ cursor, limit: 2 })
@@ -306,7 +355,7 @@ describe('withData', () => {
   describe('poll', () => {
     it('does not poll when interval is set to a falsy value', () => {
       const api = build(createConfig());
-      const spy = createSpyComponent();
+      const { spy } = createSpyComponent();
       const comp = withData({
         poll: {
           users: {
@@ -328,7 +377,7 @@ describe('withData', () => {
 
     it('does not poll when interval is not defined', () => {
       const api = build(createConfig());
-      const spy = createSpyComponent();
+      const { spy } = createSpyComponent();
       const comp = withData({
         poll: {
           users: {
@@ -352,7 +401,7 @@ describe('withData', () => {
       // to make this really robust!
 
       const api = build(createConfig());
-      const spy = createSpyComponent();
+      const { spy } = createSpyComponent();
       const comp = withData({
         poll: {
           users: {
@@ -378,7 +427,7 @@ describe('withData', () => {
 
   describe('shouldRefetch', () => {
     it('does not trigger callbacks when returning false for new props', () => {
-      const spy = createSpyComponent();
+      const { spy } = createSpyComponent();
       const spyResolve = sinon.stub().returns(Promise.resolve({}));
 
       const comp = withData({
