@@ -59,6 +59,10 @@ class Container extends Component {
     this.destroy();
   }
 
+  shouldComponentUpdate() {
+    return this.rerender;
+  }
+
   safeSetState(...args) {
     if (!this.isUnmounting) {
       this.setState(...args);
@@ -69,6 +73,7 @@ class Container extends Component {
     this.resolvedData[field] = data;
     if (this.resolvedDataTargetSize === Object.keys(this.resolvedData).length) {
       this.clearPendingTimeout();
+      this.rerender = true;
       this.safeSetState({
         pending: false,
         pendingScheduled: false,
@@ -148,7 +153,9 @@ class Container extends Component {
   }
 
   trigger(delays) {
+    this.rerender = false;
     const update = () => {
+      this.rerender = true;
       this.resolvedData = {};
       this.safeSetState({ pending: true, pendingScheduled: false, error: null });
     };

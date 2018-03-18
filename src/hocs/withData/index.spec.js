@@ -244,10 +244,10 @@ describe('withData', () => {
         pendingLogger.expectRenderCount(1);
         logger.expectRenderCount(1);
         stateContainer.setState({ userId: 'gernot' });
-        logger.expectRenderCount(2);
+        logger.expectRenderCount(1);
         return delay().then(() => {
           pendingLogger.expectRenderCount(1);
-          logger.expectRenderCount(3);
+          logger.expectRenderCount(2);
         });
       });
     });
