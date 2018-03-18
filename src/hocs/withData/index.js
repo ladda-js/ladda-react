@@ -89,6 +89,10 @@ class Container extends Component {
     });
   }
 
+  hasTimeout(type) {
+    return !!this.timeouts[type];
+  }
+
   setTimeout(type, ...args) {
     this.clearTimeout(type);
     this.timeouts[type] = setTimeout(...args);
@@ -162,9 +166,8 @@ class Container extends Component {
       this.safeSetState({ pending: true, pendingScheduled: false, error: null });
     };
     if (delays.refetch) {
-      const { timeouts } = this;
       this.setTimeout('pendingScheduled', () => {
-        if (timeouts.pendingScheduled) {
+        if (this.hasTimeout('pendingScheduled')) {
           update();
           this.clearTimeout('pendingScheduled');
         }
