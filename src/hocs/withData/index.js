@@ -91,6 +91,11 @@ class Container extends Component {
     });
   }
 
+  setTimeout(type, ...args) {
+    this.clearTimeout(type);
+    this.timeouts[type] = setTimeout(...args);
+  }
+
   clearTimeout(type) {
     const { timeouts } = this;
     if (timeouts[type]) {
@@ -160,7 +165,7 @@ class Container extends Component {
     };
     if (delays.refetch) {
       const { timeouts } = this;
-      timeouts.pendingScheduled = setTimeout(() => {
+      this.setTimeout('pendingScheduled', () => {
         if (timeouts.pendingScheduled) {
           update();
           this.clearTimeout('pendingScheduled');
@@ -197,16 +202,18 @@ class Container extends Component {
 }
 
 const DEFAULT_DELAYS = {
-  refetch: 0
+  refetch: 0,
+  minimumPendingTime: 0
 };
 
 export function withData(conf) {
   return component => {
+    const delays = { ...DEFAULT_DELAYS, ...(conf.delays || {}) };
     class WithDataWrapper extends PureComponent {
       render() {
         const props = {
           ...conf,
-          delays: conf.delays || DEFAULT_DELAYS,
+          delays,
           originalProps: this.props,
           component
         };
