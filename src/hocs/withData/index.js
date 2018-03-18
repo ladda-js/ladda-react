@@ -17,7 +17,8 @@ class Container extends Component {
     this.resolvedDataTargetSize = 0;
 
     this.timeouts = {
-      pendingScheduled: null
+      pendingScheduled: null,
+      minimumPendingTime: null
     };
 
     this.retrievers = {};
@@ -74,32 +75,41 @@ class Container extends Component {
   addResolvedData(field, data) {
     this.resolvedData[field] = data;
     if (this.resolvedDataTargetSize === Object.keys(this.resolvedData).length) {
-      const { minimumPendingTime } = this.props.delays;
+      this.publish();
+    }
+  }
 
-      if (this.state.pending && minimumPendingTime) {
-        this.setTimeout('minimumPendingTime', () => this.publish(), minimumPendingTime);
-      } else {
-        this.publish();
-      }
+  withMinimumPendingTime(fn) {
+    const { minimumPendingTime } = this.props.delays;
+    if (this.state.pending && minimumPendingTime) {
+      this.setTimeout('minimumPendingTime', () => {
+        this.clearTimeout('minimumPendingTime');
+        fn();
+      }, minimumPendingTime);
+    } else {
+      fn();
     }
   }
 
   publish() {
-    this.clearTimeout('pendingScheduled');
-    this.clearTimeout('minimumPendingTime');
-    this.rerender = true;
-    this.safeSetState({
-      pending: false,
-      resolvedProps: { ...this.resolvedData },
-      error: null
+    this.withMinimumPendingTime(() => {
+      this.clearTimeout('pendingScheduled');
+      this.rerender = true;
+      this.safeSetState({
+        pending: false,
+        resolvedProps: { ...this.resolvedData },
+        error: null
+      });
     });
   }
 
   setError(field, error) {
-    this.clearTimeout('pendingScheduled');
-    this.safeSetState({
-      pending: false,
-      error
+    this.withMinimumPendingTime(() => {
+      this.clearTimeout('pendingScheduled');
+      this.safeSetState({
+        pending: false,
+        error
+      });
     });
   }
 
