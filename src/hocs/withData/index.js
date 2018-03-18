@@ -71,7 +71,7 @@ class Container extends Component {
   addResolvedData(field, data) {
     this.resolvedData[field] = data;
     if (this.resolvedDataTargetSize === Object.keys(this.resolvedData).length) {
-      this.clearPendingTimeout();
+      this.clearTimeout('pendingScheduled');
       this.rerender = true;
       this.safeSetState({
         pending: false,
@@ -83,7 +83,7 @@ class Container extends Component {
   }
 
   setError(field, error) {
-    this.clearPendingTimeout();
+    this.clearTimeout('pendingScheduled');
     this.safeSetState({
       pending: false,
       pendingScheduled: false,
@@ -91,11 +91,11 @@ class Container extends Component {
     });
   }
 
-  clearPendingTimeout() {
+  clearTimeout(type) {
     const { timeouts } = this;
-    if (timeouts.pendingScheduled) {
-      clearTimeout(timeouts.pendingScheduled);
-      timeouts.pendingScheduled = null;
+    if (timeouts[type]) {
+      clearTimeout(timeouts[type]);
+      timeouts[type] = null;
     }
   }
 
@@ -163,7 +163,7 @@ class Container extends Component {
       timeouts.pendingScheduled = setTimeout(() => {
         if (timeouts.pendingScheduled) {
           update();
-          this.clearPendingTimeout();
+          this.clearTimeout('pendingScheduled');
         }
       }, delays.refetch);
       this.safeSetState({ pendingScheduled: true });
