@@ -95,7 +95,15 @@ class Logger {
   }
 
   expectRenderCount(count) {
-    expect(this.getRenders().length).to.equal(count);
+    this.expectCountByType('render', count);
+  }
+
+  expectCountByType(type, count) {
+    expect(this.getByType(type).length).to.equal(count);
+  }
+
+  expectCallSequence(sequence) {
+    expect(this.getCallSequence()).to.deep.equal(sequence);
   }
 }
 
@@ -222,6 +230,45 @@ describe('withData', () => {
   });
 
   describe('delay', () => {
+    it('unmounts and remounts view component when no delay is specified on refecth', () => {
+      const api = build(createConfig());
+      const { spy, logger } = createSpyComponent();
+      const { spy: pendingSpy, logger: pendingLogger } = createSpyComponent();
+      const comp = withData({
+        resolve: {
+          user: ({ userId }) => api.user.getUser(userId)
+        },
+        pendingComponent: pendingSpy,
+        delays: {
+          refetch: 0
+        }
+      })(spy);
+
+      let stateContainer = null;
+
+      render(comp, { userId: 'peter' }, c => { stateContainer = c; }, ({ userId }) => ({ userId }));
+
+      return wait().then(() => {
+        pendingLogger.expectRenderCount(1);
+        logger.expectRenderCount(1);
+        stateContainer.setState({ userId: 'gernot' });
+        logger.expectRenderCount(1);
+        logger.expectCountByType('componentWillUnmount', 1);
+        return wait().then(() => {
+          logger.expectCountByType('componentWillMount', 2);
+          pendingLogger.expectRenderCount(2);
+          logger.expectRenderCount(2);
+          logger.expectCallSequence([
+            'componentWillMount',
+            'render',
+            'componentWillUnmount',
+            'componentWillMount',
+            'render'
+          ]);
+        });
+      });
+    });
+
     it('does not show pending state immediately when delay is requested', () => {
       const api = build(createConfig());
       const { spy, logger } = createSpyComponent();
@@ -248,6 +295,35 @@ describe('withData', () => {
         return wait().then(() => {
           pendingLogger.expectRenderCount(1);
           logger.expectRenderCount(2);
+        });
+      });
+    });
+
+    it('does not needlessly unmount immediately when delay is requested', () => {
+      const api = build(createConfig());
+      const { spy, logger } = createSpyComponent();
+      const comp = withData({
+        resolve: {
+          user: ({ userId }) => api.user.getUser(userId)
+        },
+        delays: {
+          refetch: 100
+        }
+      })(spy);
+
+      let stateContainer = null;
+
+      render(comp, { userId: 'peter' }, c => { stateContainer = c; }, ({ userId }) => ({ userId }));
+
+      return wait().then(() => {
+        stateContainer.setState({ userId: 'gernot' });
+        return wait().then(() => {
+          logger.expectCallSequence([
+            'componentWillMount',
+            'render',
+            'componentWillReceiveProps',
+            'render'
+          ]);
         });
       });
     });
