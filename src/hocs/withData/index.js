@@ -236,10 +236,5 @@ export function withData(conf) {
   };
 }
 
-// wait with refetch spinner
-// wait with initial spinner
-//
-// minimum time for spinner
-
 withData.PAGINATION = PAGINATION;
 
