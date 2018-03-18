@@ -312,6 +312,7 @@ describe('withData', () => {
 
           return api.user.updateUser({ id: 'peter', name: 'crona' }).then((nextUser) => {
             return delay().then(() => {
+              // TODO: Why is there another render call here?
               logger.expectRenderCount(4);
               const thirdProps = logger.getRenderProps(2);
               expect(thirdProps.users[0]).to.deep.equal(nextUser);
