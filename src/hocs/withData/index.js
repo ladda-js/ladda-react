@@ -6,8 +6,6 @@ import {
   PAGINATION
 } from './retrievers';
 
-const incrementVersion = version => (version > 99 ? 0 : version + 1);
-
 class Container extends Component {
   constructor(props) {
     super(props);
@@ -71,22 +69,22 @@ class Container extends Component {
     this.resolvedData[field] = data;
     if (this.resolvedDataTargetSize === Object.keys(this.resolvedData).length) {
       this.clearPendingTimeout();
-      this.safeSetState(prevState => ({
+      this.safeSetState({
         pending: false,
+        pendingScheduled: false,
         resolvedProps: { ...this.resolvedData },
-        error: null,
-        version: incrementVersion(prevState.version)
-      }));
+        error: null
+      });
     }
   }
 
   setError(field, error) {
     this.clearPendingTimeout();
-    this.safeSetState(prevState => ({
+    this.safeSetState({
       pending: false,
-      error,
-      version: incrementVersion(prevState.version)
-    }));
+      pendingScheduled: false,
+      error
+    });
   }
 
   clearPendingTimeout() {
@@ -152,7 +150,7 @@ class Container extends Component {
   trigger(delays) {
     const update = () => {
       this.resolvedData = {};
-      this.safeSetState({ pending: true, error: null });
+      this.safeSetState({ pending: true, pendingScheduled: false, error: null });
     };
     if (delays.refetch) {
       const { timeouts } = this;
@@ -162,6 +160,7 @@ class Container extends Component {
           this.clearPendingTimeout();
         }
       }, delays.refetch);
+      this.safeSetState({ pendingScheduled: true });
     } else {
       update();
     }
