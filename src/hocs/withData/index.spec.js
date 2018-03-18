@@ -330,7 +330,7 @@ describe('withData', () => {
       });
     });
 
-    fit('allows to specify a mininumPendingTime to reduce flicker', () => {
+    it('allows to specify a mininumPendingTime to reduce flicker', () => {
       const minimumPendingTime = 10;
       const api = build(createConfig());
       const { spy } = createSpyComponent();
