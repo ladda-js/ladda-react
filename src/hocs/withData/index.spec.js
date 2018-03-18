@@ -9,6 +9,8 @@ import { withData } from '.';
 
 const wait = (t = 1) => new Promise(res => setTimeout(() => res(), t));
 
+const getTimeDiff = (l1, l2) => l2.t - l1.t;
+
 const peter = { id: 'peter', name: 'peter' };
 const gernot = { id: 'gernot', name: 'gernot' };
 const robin = { id: 'robin', name: 'robin' };
@@ -324,6 +326,44 @@ describe('withData', () => {
             'componentWillReceiveProps',
             'render'
           ]);
+        });
+      });
+    });
+
+    fit('allows to specify a mininumPendingTime to reduce flicker', () => {
+      const minimumPendingTime = 10;
+      const api = build(createConfig());
+      const { spy } = createSpyComponent();
+      const { spy: pendingSpy, logger: pendingLogger } = createSpyComponent();
+      const comp = withData({
+        resolve: {
+          user: ({ userId }) => api.user.getUser(userId)
+        },
+        pendingComponent: pendingSpy,
+        delays: {
+          refetch: 0,
+          minimumPendingTime
+        }
+      })(spy);
+
+      let stateContainer = null;
+
+      render(comp, { userId: 'peter' }, c => { stateContainer = c; }, ({ userId }) => ({ userId }));
+
+      return wait().then(() => {
+        stateContainer.setState({ userId: 'gernot' });
+        return wait().then(() => {
+          pendingLogger.expectRenderCount(2);
+          const firstMount = pendingLogger.getByType('componentWillMount')[0];
+          const firstUnmount = pendingLogger.getByType('componentWillUnmount')[0];
+          const secondMount = pendingLogger.getByType('componentWillMount')[1];
+          const secondUnmount = pendingLogger.getByType('componentWillUnmount')[1];
+
+          const t1 = getTimeDiff(firstMount, firstUnmount);
+          const t2 = getTimeDiff(secondMount, secondUnmount);
+
+          expect(t1).to.be.at.least(minimumPendingTime);
+          expect(t2).to.be.at.least(minimumPendingTime);
         });
       });
     });
