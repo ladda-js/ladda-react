@@ -27,8 +27,7 @@ class Container extends Component {
     this.state = {
       pending: false,
       error: null,
-      resolvedProps: null,
-      version: 0
+      resolvedProps: null
     };
   }
 
