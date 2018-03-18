@@ -332,6 +332,7 @@ describe('withData', () => {
 
     it('allows to specify a mininumPendingTime to reduce flicker', () => {
       const minimumPendingTime = 10;
+      const minimumPendingTimeWithThreshold = minimumPendingTime + 2;
       const api = build(createConfig());
       const { spy } = createSpyComponent();
       const { spy: pendingSpy, logger: pendingLogger } = createSpyComponent();
@@ -350,9 +351,9 @@ describe('withData', () => {
 
       render(comp, { userId: 'peter' }, c => { stateContainer = c; }, ({ userId }) => ({ userId }));
 
-      return wait().then(() => {
+      return wait(minimumPendingTimeWithThreshold).then(() => {
         stateContainer.setState({ userId: 'gernot' });
-        return wait().then(() => {
+        return wait(minimumPendingTimeWithThreshold).then(() => {
           pendingLogger.expectRenderCount(2);
           const firstMount = pendingLogger.getByType('componentWillMount')[0];
           const firstUnmount = pendingLogger.getByType('componentWillUnmount')[0];
