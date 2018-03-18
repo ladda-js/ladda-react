@@ -7,7 +7,7 @@ import sinon from 'sinon';
 
 import { withData } from '.';
 
-const delay = (t = 1) => new Promise(res => setTimeout(() => res(), t));
+const wait = (t = 1) => new Promise(res => setTimeout(() => res(), t));
 
 const peter = { id: 'peter', name: 'peter' };
 const gernot = { id: 'gernot', name: 'gernot' };
@@ -161,7 +161,7 @@ describe('withData', () => {
 
     render(comp, { userId: 'peter' });
 
-    return delay().then(() => {
+    return wait().then(() => {
       logger.expectRenderCount(1);
       const props = logger.getRenderProps(0);
       expect(props.userId).to.equal('peter');
@@ -182,13 +182,13 @@ describe('withData', () => {
 
     render(comp, { userId: 'peter' }, c => { stateContainer = c; }, ({ userId }) => ({ userId }));
 
-    return delay().then(() => {
+    return wait().then(() => {
       logger.expectRenderCount(1);
       stateContainer.setState({ x: 'x' });
-      return delay().then(() => {
+      return wait().then(() => {
         logger.expectRenderCount(1);
         stateContainer.setState({ userId: 'gernot' });
-        return delay().then(() => {
+        return wait().then(() => {
           logger.expectRenderCount(2);
         });
       });
@@ -206,13 +206,13 @@ describe('withData', () => {
 
     render(comp, { userId: 'peter' });
 
-    return delay().then(() => {
+    return wait().then(() => {
       logger.expectRenderCount(1);
       const firstProps = logger.getRenderProps(0);
       expect(firstProps.user).to.deep.equal(peter);
 
       return api.user.updateUser({ id: 'peter', name: 'crona' }).then((nextUser) => {
-        return delay().then(() => {
+        return wait().then(() => {
           logger.expectRenderCount(2);
           const secondProps = logger.getRenderProps(1);
           expect(secondProps.user).to.deep.equal(nextUser);
@@ -240,12 +240,12 @@ describe('withData', () => {
 
       render(comp, { userId: 'peter' }, c => { stateContainer = c; }, ({ userId }) => ({ userId }));
 
-      return delay().then(() => {
+      return wait().then(() => {
         pendingLogger.expectRenderCount(1);
         logger.expectRenderCount(1);
         stateContainer.setState({ userId: 'gernot' });
         logger.expectRenderCount(1);
-        return delay().then(() => {
+        return wait().then(() => {
           pendingLogger.expectRenderCount(1);
           logger.expectRenderCount(2);
         });
@@ -268,13 +268,13 @@ describe('withData', () => {
 
       render(comp, {});
 
-      return delay().then(() => {
+      return wait().then(() => {
         logger.expectRenderCount(1);
         const firstProps = logger.getRenderProps(0);
         expect(firstProps.users).to.deep.equal([peter, gernot]);
 
         return firstProps.paginate.users.getNext().then(() => {
-          return delay().then(() => {
+          return wait().then(() => {
             logger.expectRenderCount(2);
             const secondProps = logger.getRenderProps(1);
             expect(secondProps.users).to.deep.equal([peter, gernot, robin]);
@@ -300,7 +300,7 @@ describe('withData', () => {
 
       render(comp, {});
 
-      return delay().then(() => {
+      return wait().then(() => {
         logger.expectRenderCount(1);
         const firstProps = logger.getRenderProps(0);
         expect(firstProps.users).to.deep.equal([peter, gernot]);
@@ -311,7 +311,7 @@ describe('withData', () => {
           expect(secondProps.users).to.deep.equal([peter, gernot, robin]);
 
           return api.user.updateUser({ id: 'peter', name: 'crona' }).then((nextUser) => {
-            return delay().then(() => {
+            return wait().then(() => {
               // TODO: Why is there another render call here?
               logger.expectRenderCount(4);
               const thirdProps = logger.getRenderProps(2);
@@ -339,7 +339,7 @@ describe('withData', () => {
 
       render(comp, {});
 
-      return delay().then(() => {
+      return wait().then(() => {
         logger.expectRenderCount(1);
         const firstProps = logger.getRenderProps(0);
         expect(firstProps.users.length).to.equal(2);
@@ -347,7 +347,7 @@ describe('withData', () => {
         expect(firstProps.users).to.contain(gernot);
 
         return firstProps.paginate.users.getNext().then(() => {
-          return delay().then(() => {
+          return wait().then(() => {
             logger.expectRenderCount(2);
             const secondProps = logger.getRenderProps(1);
             expect(secondProps.users).to.deep.equal([peter, gernot, robin, paulo]);
@@ -380,9 +380,9 @@ describe('withData', () => {
 
       render(comp, {});
 
-      return delay().then(() => {
+      return wait().then(() => {
         logger.expectRenderCount(1);
-        return delay(10).then(() => {
+        return wait(10).then(() => {
           logger.expectRenderCount(1);
         });
       });
@@ -401,9 +401,9 @@ describe('withData', () => {
 
       render(comp, {});
 
-      return delay().then(() => {
+      return wait().then(() => {
         logger.expectRenderCount(1);
-        return delay(10).then(() => {
+        return wait(10).then(() => {
           logger.expectRenderCount(1);
         });
       });
@@ -426,11 +426,11 @@ describe('withData', () => {
 
       render(comp, {});
 
-      return delay().then(() => {
+      return wait().then(() => {
         logger.expectRenderCount(1);
-        return delay(10).then(() => {
+        return wait(10).then(() => {
           logger.expectRenderCount(2);
-          return delay(10).then(() => {
+          return wait(10).then(() => {
             logger.expectRenderCount(3);
           });
         });
@@ -456,17 +456,17 @@ describe('withData', () => {
 
       render(comp, { userId: 'peter' }, c => { stateContainer = c; });
 
-      return delay().then(() => {
+      return wait().then(() => {
         logger.expectRenderCount(1);
         expect(spyResolve).to.have.been.calledOnce;
 
         stateContainer.setState({ userId: 'robin' });
-        return delay().then(() => {
+        return wait().then(() => {
           expect(spyResolve).to.have.been.calledOnce;
           logger.expectRenderCount(2);
 
           stateContainer.setState({ userId: 'gernot' });
-          return delay().then(() => {
+          return wait().then(() => {
             expect(spyResolve).to.have.been.calledTwice;
             logger.expectRenderCount(3);
           });
