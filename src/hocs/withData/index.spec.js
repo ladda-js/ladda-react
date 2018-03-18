@@ -164,7 +164,7 @@ describe('withData', () => {
     });
   });
 
-  fit('does not re-render when no props to it have changed', () => {
+  it('does not re-render when no props to it have changed', () => {
     const api = build(createConfig());
     const { spy, logger } = createSpyComponent();
     const comp = withData({
@@ -185,7 +185,7 @@ describe('withData', () => {
         logger.expectRenderCount(1);
         stateContainer.setState({ userId: 'gernot' });
         return delay().then(() => {
-          logger.expectRenderCount(3);
+          logger.expectRenderCount(2);
         });
       });
     });
@@ -234,7 +234,6 @@ describe('withData', () => {
 
       let stateContainer = null;
 
-      // prefill the cache
       render(comp, { userId: 'peter' }, c => { stateContainer = c; }, ({ userId }) => ({ userId }));
 
       return delay().then(() => {

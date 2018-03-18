@@ -150,7 +150,10 @@ class Container extends Component {
   }
 
   trigger(delays) {
-    const update = () => this.safeSetState({ pending: true, error: null });
+    const update = () => {
+      this.resolvedData = {};
+      this.safeSetState({ pending: true, error: null });
+    };
     if (delays.refetch) {
       const { timeouts } = this;
       timeouts.pendingScheduled = setTimeout(() => {
