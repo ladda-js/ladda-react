@@ -331,7 +331,7 @@ describe('withData', () => {
     });
 
     it('allows to specify a mininumPendingTime to reduce flicker', () => {
-      const minimumPendingTime = 10;
+      const minimumPendingTime = 5;
       const minimumPendingTimeWithThreshold = minimumPendingTime + 2;
       const api = build(createConfig());
       const { spy } = createSpyComponent();
