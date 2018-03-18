@@ -97,24 +97,31 @@ class Logger {
 
 const createSpyComponent = () => {
   const logger = new Logger();
-  const log = (type, props) => logger.log({ type, props });
+  const log = (type, props, generation) => logger.log({ type, props, generation });
+
+  let generation = 0;
 
   class SpyComponent extends Component {
+    constructor() {
+      super();
+      this.generation = generation++;
+    }
+
     componentWillMount() {
-      log('componentWillMount', this.props);
+      log('componentWillMount', this.props, this.generation);
     }
 
     componentWillUnmount() {
-      log('componentWillUnmount', this.props);
+      log('componentWillUnmount', this.props, this.generation);
     }
 
     // eslint-disable-next-line class-methods-use-this
     componentWillReceiveProps(nextProps) {
-      log('componentWillReceiveProps', nextProps);
+      log('componentWillReceiveProps', nextProps, this.generation);
     }
 
     render() {
-      log('render', this.props);
+      log('render', this.props, this.generation);
       return null;
     }
   }
@@ -157,7 +164,7 @@ describe('withData', () => {
     });
   });
 
-  it('does not re-render when no props to it have changed', () => {
+  fit('does not re-render when no props to it have changed', () => {
     const api = build(createConfig());
     const { spy, logger } = createSpyComponent();
     const comp = withData({
