@@ -90,6 +90,10 @@ class Logger {
     return this.logs.map(l => l.type);
   }
 
+  getRenderProps(count) {
+    return this.getRenders()[count].props;
+  }
+
   expectRenderCount(count) {
     expect(this.getRenders().length).to.equal(count);
   }
@@ -159,7 +163,7 @@ describe('withData', () => {
 
     return delay().then(() => {
       logger.expectRenderCount(1);
-      const { props } = logger.getRenders()[0];
+      const props = logger.getRenderProps(0);
       expect(props.userId).to.equal('peter');
     });
   });
@@ -204,13 +208,13 @@ describe('withData', () => {
 
     return delay().then(() => {
       logger.expectRenderCount(1);
-      const { props: firstProps } = logger.getRenders()[0];
+      const firstProps = logger.getRenderProps(0);
       expect(firstProps.user).to.deep.equal(peter);
 
       return api.user.updateUser({ id: 'peter', name: 'crona' }).then((nextUser) => {
         return delay().then(() => {
           logger.expectRenderCount(2);
-          const { props: secondProps } = logger.getRenders()[1];
+          const secondProps = logger.getRenderProps(1);
           expect(secondProps.user).to.deep.equal(nextUser);
         });
       });
@@ -240,6 +244,7 @@ describe('withData', () => {
         pendingLogger.expectRenderCount(1);
         logger.expectRenderCount(1);
         stateContainer.setState({ userId: 'gernot' });
+        logger.expectRenderCount(2);
         return delay().then(() => {
           pendingLogger.expectRenderCount(1);
           logger.expectRenderCount(3);
@@ -265,13 +270,13 @@ describe('withData', () => {
 
       return delay().then(() => {
         logger.expectRenderCount(1);
-        const { props: firstProps } = logger.getRenders()[0];
+        const firstProps = logger.getRenderProps(0);
         expect(firstProps.users).to.deep.equal([peter, gernot]);
 
         return firstProps.paginate.users.getNext().then(() => {
           return delay().then(() => {
             logger.expectRenderCount(2);
-            const { props: secondProps } = logger.getRenders()[1];
+            const secondProps = logger.getRenderProps(1);
             expect(secondProps.users).to.deep.equal([peter, gernot, robin]);
           });
         });
@@ -297,17 +302,18 @@ describe('withData', () => {
 
       return delay().then(() => {
         logger.expectRenderCount(1);
-        const { props: firstProps } = logger.getRenders()[0];
+        const firstProps = logger.getRenderProps(0);
         expect(firstProps.users).to.deep.equal([peter, gernot]);
 
         return firstProps.paginate.users.getNext().then(() => {
           logger.expectRenderCount(2);
-          const { props: secondProps } = logger.getRenders()[1];
+          const secondProps = logger.getRenderProps(1);
           expect(secondProps.users).to.deep.equal([peter, gernot, robin]);
 
           return api.user.updateUser({ id: 'peter', name: 'crona' }).then((nextUser) => {
             return delay().then(() => {
-              const { props: thirdProps } = logger.getRenders()[2];
+              logger.expectRenderCount(4);
+              const thirdProps = logger.getRenderProps(2);
               expect(thirdProps.users[0]).to.deep.equal(nextUser);
             });
           });
@@ -334,7 +340,7 @@ describe('withData', () => {
 
       return delay().then(() => {
         logger.expectRenderCount(1);
-        const { props: firstProps } = logger.getRenders()[0];
+        const firstProps = logger.getRenderProps(0);
         expect(firstProps.users.length).to.equal(2);
         expect(firstProps.users).to.contain(peter);
         expect(firstProps.users).to.contain(gernot);
@@ -342,13 +348,13 @@ describe('withData', () => {
         return firstProps.paginate.users.getNext().then(() => {
           return delay().then(() => {
             logger.expectRenderCount(2);
-            const { props: secondProps } = logger.getRenders()[1];
+            const secondProps = logger.getRenderProps(1);
             expect(secondProps.users).to.deep.equal([peter, gernot, robin, paulo]);
             expect(secondProps.paginate.users.hasNext).to.be.true;
 
             return secondProps.paginate.users.getNext().then(() => {
               logger.expectRenderCount(3);
-              const { props: thirdProps } = logger.getRenders()[2];
+              const thirdProps = logger.getRenderProps(2);
               expect(thirdProps.users).to.deep.equal([peter, gernot, robin, paulo, timur]);
               expect(thirdProps.paginate.users.hasNext).to.be.false;
             });
