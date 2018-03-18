@@ -75,7 +75,6 @@ class Container extends Component {
       this.rerender = true;
       this.safeSetState({
         pending: false,
-        pendingScheduled: false,
         resolvedProps: { ...this.resolvedData },
         error: null
       });
@@ -86,7 +85,6 @@ class Container extends Component {
     this.clearTimeout('pendingScheduled');
     this.safeSetState({
       pending: false,
-      pendingScheduled: false,
       error
     });
   }
@@ -171,7 +169,6 @@ class Container extends Component {
           this.clearTimeout('pendingScheduled');
         }
       }, delays.refetch);
-      this.safeSetState({ pendingScheduled: true });
     } else {
       update();
     }
