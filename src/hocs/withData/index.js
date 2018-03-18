@@ -6,6 +6,9 @@ import {
   PAGINATION
 } from './retrievers';
 
+const TRUE_FN = () => true;
+const NULL_FN = () => null;
+
 class Container extends Component {
   constructor(props) {
     super(props);
@@ -44,7 +47,7 @@ class Container extends Component {
   }
 
   componentWillReceiveProps(newProps) {
-    const { shouldRefetch = (() => true) } = newProps;
+    const { shouldRefetch = TRUE_FN } = newProps;
     if (!shouldRefetch(this.props.originalProps, newProps.originalProps)) {
       return;
     }
@@ -162,7 +165,7 @@ class Container extends Component {
         publishError: publishError(key),
         getProps,
         getter: poll[key].resolve,
-        interval: (poll[key].interval || (() => null))(originalProps)
+        interval: (poll[key].interval || NULL_FN)(originalProps)
       });
     });
 
