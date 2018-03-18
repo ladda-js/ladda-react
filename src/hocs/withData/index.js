@@ -112,7 +112,6 @@ class Container extends Component {
   clearTimeout(type) {
     const { timeouts } = this;
     if (timeouts[type]) {
-      const { timeouts } = this;
       clearTimeout(timeouts[type]);
       timeouts[type] = null;
     }
