@@ -241,9 +241,9 @@ describe('withData', () => {
           user: ({ userId }) => api.user.getUser(userId)
         },
         pendingComponent: pendingSpy,
-        delays: {
+        delays: () => ({
           refetch: 0
-        }
+        })
       })(spy);
 
       let stateContainer = null;
@@ -280,9 +280,9 @@ describe('withData', () => {
           user: ({ userId }) => api.user.getUser(userId)
         },
         pendingComponent: pendingSpy,
-        delays: {
+        delays: () => ({
           refetch: 100
-        }
+        })
       })(spy);
 
       let stateContainer = null;
@@ -308,9 +308,9 @@ describe('withData', () => {
         resolve: {
           user: ({ userId }) => api.user.getUser(userId)
         },
-        delays: {
+        delays: () => ({
           refetch: 100
-        }
+        })
       })(spy);
 
       let stateContainer = null;
@@ -341,10 +341,10 @@ describe('withData', () => {
           user: ({ userId }) => api.user.getUser(userId)
         },
         pendingComponent: pendingSpy,
-        delays: {
+        delays: () => ({
           refetch: 0,
           minimumPendingTime
-        }
+        })
       })(spy);
 
       let stateContainer = null;

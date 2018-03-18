@@ -8,6 +8,7 @@ import {
 
 const TRUE_FN = () => true;
 const NULL_FN = () => null;
+const EMPTY_OBJ_FN = () => {};
 
 class Container extends Component {
   constructor(props) {
@@ -44,17 +45,17 @@ class Container extends Component {
 
   componentWillMount() {
     this.setupRetrievers(this.props);
-    this.trigger({});
+    this.trigger(this.props, true);
   }
 
-  componentWillReceiveProps(newProps) {
-    const { shouldRefetch = TRUE_FN } = newProps;
-    if (!shouldRefetch(this.props.originalProps, newProps.originalProps)) {
+  componentWillReceiveProps(nextProps) {
+    const { shouldRefetch = TRUE_FN } = nextProps;
+    if (!shouldRefetch(this.props.originalProps, nextProps.originalProps)) {
       return;
     }
     this.destroy();
-    this.setupRetrievers(newProps);
-    this.trigger(newProps.delays);
+    this.setupRetrievers(nextProps);
+    this.trigger(nextProps, false);
   }
 
   componentWillUnmount() {
@@ -80,7 +81,7 @@ class Container extends Component {
   }
 
   withMinimumPendingTime(fn) {
-    const { minimumPendingTime } = this.props.delays;
+    const { minimumPendingTime } = this.props.delays(this.props.originalProps);
     if (this.state.pending && minimumPendingTime) {
       this.setTimeout('minimumPendingTime', () => {
         this.clearTimeout('minimumPendingTime');
@@ -182,14 +183,15 @@ class Container extends Component {
     this.resolvedDataTargetSize = resolveKeys.length + observeKeys.length + pollKeys.length;
   }
 
-  trigger(delays) {
+  trigger(props, firstRender) {
     this.rerender = false;
     const update = () => {
       this.rerender = true;
       this.resolvedData = {};
       this.safeSetState({ pending: true, pendingScheduled: false, error: null });
     };
-    if (delays.refetch) {
+    const delays = props.delays(props.originalProps);
+    if (!firstRender && delays.refetch) {
       this.setTimeout('pendingScheduled', () => {
         if (this.hasTimeout('pendingScheduled')) {
           update();
@@ -232,7 +234,10 @@ const DEFAULT_DELAYS = {
 
 export function withData(conf) {
   return component => {
-    const delays = { ...DEFAULT_DELAYS, ...(conf.delays || {}) };
+    const delays = (props) => ({
+      ...DEFAULT_DELAYS,
+      ...(conf.delays || EMPTY_OBJ_FN)(props)
+    });
     class WithDataWrapper extends PureComponent {
       render() {
         const props = {
