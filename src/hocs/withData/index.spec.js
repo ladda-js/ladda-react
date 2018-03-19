@@ -351,6 +351,8 @@ describe('withData', () => {
 
       render(comp, { userId: 'peter' }, c => { stateContainer = c; }, ({ userId }) => ({ userId }));
 
+      // the first render ideally shouldn't wait, if the promise resolves
+      // immediately
       return wait(minimumPendingTimeWithThreshold).then(() => {
         stateContainer.setState({ userId: 'gernot' });
         return wait(minimumPendingTimeWithThreshold).then(() => {
