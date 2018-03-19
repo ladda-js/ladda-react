@@ -6,6 +6,10 @@ import {
   PAGINATION
 } from './retrievers';
 
+const TRUE_FN = () => true;
+const NULL_FN = () => null;
+const EMPTY_OBJ_FN = () => {};
+
 class Container extends Component {
   constructor(props) {
     super(props);
@@ -14,7 +18,8 @@ class Container extends Component {
     this.resolvedDataTargetSize = 0;
 
     this.timeouts = {
-      pendingScheduled: null
+      pendingScheduled: null,
+      minimumPendingTime: null
     };
 
     this.retrievers = {};
@@ -40,17 +45,17 @@ class Container extends Component {
 
   componentWillMount() {
     this.setupRetrievers(this.props);
-    this.trigger({});
+    this.trigger(this.props, true);
   }
 
-  componentWillReceiveProps(newProps) {
-    const { shouldRefetch = (() => true) } = newProps;
-    if (!shouldRefetch(this.props.originalProps, newProps.originalProps)) {
+  componentWillReceiveProps(nextProps) {
+    const { shouldRefetch = TRUE_FN } = nextProps;
+    if (!shouldRefetch(this.props.originalProps, nextProps.originalProps)) {
       return;
     }
     this.destroy();
-    this.setupRetrievers(newProps);
-    this.trigger(newProps.delays);
+    this.setupRetrievers(nextProps);
+    this.trigger(nextProps, false);
   }
 
   componentWillUnmount() {
@@ -71,31 +76,58 @@ class Container extends Component {
   addResolvedData(field, data) {
     this.resolvedData[field] = data;
     if (this.resolvedDataTargetSize === Object.keys(this.resolvedData).length) {
-      this.clearPendingTimeout();
-      this.rerender = true;
-      this.safeSetState({
-        pending: false,
-        pendingScheduled: false,
-        resolvedProps: { ...this.resolvedData },
-        error: null
-      });
+      this.publish();
     }
   }
 
-  setError(field, error) {
-    this.clearPendingTimeout();
-    this.safeSetState({
-      pending: false,
-      pendingScheduled: false,
-      error
+  withMinimumPendingTime(fn) {
+    const { minimumPendingTime } = this.props.delays(this.props.originalProps);
+    if (this.state.pending && minimumPendingTime) {
+      this.setTimeout('minimumPendingTime', () => {
+        this.clearTimeout('minimumPendingTime');
+        fn();
+      }, minimumPendingTime);
+    } else {
+      fn();
+    }
+  }
+
+  publish() {
+    this.withMinimumPendingTime(() => {
+      this.clearTimeout('pendingScheduled');
+      this.rerender = true;
+      this.safeSetState({
+        pending: false,
+        resolvedProps: { ...this.resolvedData },
+        error: null
+      });
     });
   }
 
-  clearPendingTimeout() {
+  setError(field, error) {
+    this.withMinimumPendingTime(() => {
+      this.clearTimeout('pendingScheduled');
+      this.safeSetState({
+        pending: false,
+        error
+      });
+    });
+  }
+
+  hasTimeout(type) {
+    return !!this.timeouts[type];
+  }
+
+  setTimeout(type, ...args) {
+    this.clearTimeout(type);
+    this.timeouts[type] = setTimeout(...args);
+  }
+
+  clearTimeout(type) {
     const { timeouts } = this;
-    if (timeouts.pendingScheduled) {
-      clearTimeout(timeouts.pendingScheduled);
-      timeouts.pendingScheduled = null;
+    if (timeouts[type]) {
+      clearTimeout(timeouts[type]);
+      timeouts[type] = null;
     }
   }
 
@@ -144,29 +176,28 @@ class Container extends Component {
         publishError: publishError(key),
         getProps,
         getter: poll[key].resolve,
-        interval: (poll[key].interval || (() => null))(originalProps)
+        interval: (poll[key].interval || NULL_FN)(originalProps)
       });
     });
 
     this.resolvedDataTargetSize = resolveKeys.length + observeKeys.length + pollKeys.length;
   }
 
-  trigger(delays) {
+  trigger(props, firstRender) {
     this.rerender = false;
     const update = () => {
       this.rerender = true;
       this.resolvedData = {};
       this.safeSetState({ pending: true, pendingScheduled: false, error: null });
     };
-    if (delays.refetch) {
-      const { timeouts } = this;
-      timeouts.pendingScheduled = setTimeout(() => {
-        if (timeouts.pendingScheduled) {
+    const delays = props.delays(props.originalProps);
+    if (!firstRender && delays.refetch) {
+      this.setTimeout('pendingScheduled', () => {
+        if (this.hasTimeout('pendingScheduled')) {
           update();
-          this.clearPendingTimeout();
+          this.clearTimeout('pendingScheduled');
         }
       }, delays.refetch);
-      this.safeSetState({ pendingScheduled: true });
     } else {
       update();
     }
@@ -197,16 +228,21 @@ class Container extends Component {
 }
 
 const DEFAULT_DELAYS = {
-  refetch: 0
+  refetch: 0,
+  minimumPendingTime: 0
 };
 
 export function withData(conf) {
   return component => {
+    const delays = (props) => ({
+      ...DEFAULT_DELAYS,
+      ...(conf.delays || EMPTY_OBJ_FN)(props)
+    });
     class WithDataWrapper extends PureComponent {
       render() {
         const props = {
           ...conf,
-          delays: conf.delays || DEFAULT_DELAYS,
+          delays,
           originalProps: this.props,
           component
         };
@@ -216,11 +252,6 @@ export function withData(conf) {
     return WithDataWrapper;
   };
 }
-
-// wait with refetch spinner
-// wait with initial spinner
-//
-// minimum time for spinner
 
 withData.PAGINATION = PAGINATION;
 
