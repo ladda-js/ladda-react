@@ -35,7 +35,7 @@
     "rollup-plugin-babel": "^3.0.3",
     "sinon": "^1.17.7",
     "sinon-chai": "^2.8.0",
-    "typescript": "^2.7.1"
+    "typescript": "^3.0.0-rc"
   },
   "scripts": {
     "test": "env NODE_PATH=$NODE_PATH:$PWD/src NODE_ENV=test ./node_modules/.bin/mocha --compilers js:babel-register --reporter spec 'src/**/*.spec.js' --require mocha.config",
